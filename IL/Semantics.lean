@@ -281,7 +281,7 @@ theorem main_sem_lemma_left (Γ : Proof.setDisjTh) (ϕ : Formula) :
                                           let Hthded := Proof.deductionTheorem_left Hunionconseq
                                           let Hdisjspec := Hded (ψ⇒χ) Hthded
                                           contradiction
-                                   let Haux := @Proof.consistent_incl_complete (Γ ∪ {ψ}) {χ} χ Hcons'
+                                   let Haux := @Proof.consistent_incl_complete (Γ ∪ {ψ}) {χ} Hcons'
                                    rcases Haux with ⟨Φ, ⟨Ω, ⟨Hincl1, ⟨Hincl2, Hcompl⟩⟩⟩⟩
                                    have Hdisjth' : @Proof.disjunctiveTheory Φ :=
                                     by apply Proof.complete_pair_fst_disj Hcompl
@@ -380,7 +380,7 @@ theorem completeness {ϕ : Formula} {Γ : Set Formula} : Γ ⊨ ϕ -> Nonempty (
             have Hsubsetconseq : Γ ⊢ ϕ := by apply Proof.subset_proof Hincl1 Hded
             apply h
             apply Nonempty.intro Hsubsetconseq
-      let Hcompl := @Proof.consistent_incl_complete Γ {ϕ} ϕ Hcons
+      let Hcompl := @Proof.consistent_incl_complete Γ {ϕ} Hcons
       rcases Hcompl with ⟨Φ, ⟨Ω, ⟨Hincl1, ⟨Hincl2, Hcompl⟩⟩⟩⟩
       let Hcomplete := Hcompl
       simp [Proof.completePair] at Hcompl
