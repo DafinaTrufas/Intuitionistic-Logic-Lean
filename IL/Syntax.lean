@@ -95,74 +95,78 @@ def proofLength {ϕ : Formula} (p : Proof Γ ϕ) : Nat :=
 
 noncomputable instance {ϕ ψ : Formula} : Decidable (ϕ = ψ) := @default _ (Classical.decidableInhabited _)
 
-noncomputable def proofFormulaeList {ϕ : Formula} (p : Proof Γ ϕ) : List Formula :=
+noncomputable def usedPremises {ϕ : Formula} : Proof Γ ϕ -> Finset Formula
+  | premise Hvp => {ϕ}
+  | contractionDisj => ∅
+  | contractionConj => ∅
+  | weakeningDisj => ∅
+  | weakeningConj => ∅
+  | permutationDisj => ∅
+  | permutationConj => ∅
+  | exfalso => ∅
+  | modusPonens p1 p2 => usedPremises p1 ∪ usedPremises p2
+  | syllogism p1 p2 => usedPremises p1 ∪ usedPremises p2
+  | exportation p => usedPremises p
+  | importation p => usedPremises p
+  | expansion p => usedPremises p
+
+noncomputable def toFinitePremises {ϕ : Formula} (p : Proof Γ ϕ) : Proof (@usedPremises Γ ϕ p).toSet ϕ :=
   match p with
-  | @premise Γ ψ _ => [ψ]
-  | @contractionDisj Γ ϕ => [ϕ ∨∨ ϕ ⇒ ϕ]
-  | @contractionConj Γ ϕ => [ϕ ⇒ ϕ ∧∧ ϕ]
-  | @weakeningDisj Γ ϕ ψ => [ϕ ⇒ ϕ ∨∨ ψ]
-  | @weakeningConj Γ ϕ ψ => [ϕ ∧∧ ψ ⇒ ϕ]
-  | @permutationDisj Γ ϕ ψ => [ϕ ∨∨ ψ ⇒ ψ ∨∨ ϕ]
-  | @permutationConj Γ ϕ ψ => [ϕ ∧∧ ψ ⇒ ψ ∧∧ ϕ]
-  | @exfalso Γ ϕ => [⊥ ⇒ ϕ]
-  | @modusPonens Γ _ ψ p1 p2 => ψ :: proofFormulaeList p1 ++ proofFormulaeList p2
-  | @syllogism Γ ϕ _ χ p1 p2 => (ϕ ⇒ χ) :: proofFormulaeList p1 ++ proofFormulaeList p2
-  | @exportation Γ ϕ ψ χ p => (ϕ ⇒ ψ ⇒ χ) :: proofFormulaeList p
-  | @importation Γ ϕ ψ χ p => (ϕ ∧∧ ψ ⇒ χ) :: proofFormulaeList p
-  | @expansion Γ ϕ ψ χ p => (χ ∨∨ ϕ ⇒ χ ∨∨ ψ) :: proofFormulaeList p
-
-theorem proofForulaeList_nonempty (p : Proof Γ ϕ) : ¬ proofFormulaeList p = [] :=
-  by
-    intros Hempty
-    cases p with
-    | premise _ | contractionDisj | contractionConj | weakeningDisj | weakeningConj
-    | permutationDisj | permutationConj | exfalso | modusPonens | syllogism | exportation
-    | importation | expansion  => simp [proofFormulaeList] at Hempty
-
-theorem proofFormulaeList_last (p : Proof Γ ϕ) (Hnempty : proofFormulaeList p ≠ []) :
-  List.head (proofFormulaeList p) Hnempty = ϕ :=
-  by
-    cases p with
-    | premise _ | contractionDisj | contractionConj | weakeningDisj | weakeningConj
-    | permutationDisj | permutationConj | exfalso | modusPonens | syllogism | exportation
-    | importation | expansion  => simp [proofFormulaeList]
+  | premise Hvp => have Helem : ϕ ∈ ↑(usedPremises (premise Hvp)) := by simp; unfold usedPremises; simp
+                   premise Helem
+  | contractionDisj => contractionDisj
+  | contractionConj => contractionConj
+  | weakeningDisj => weakeningDisj
+  | weakeningConj => weakeningConj
+  | permutationDisj => permutationDisj
+  | permutationConj => permutationConj
+  | exfalso => exfalso
+  | modusPonens p1 p2 => have Hincl1 : usedPremises p1 ⊆ usedPremises (modusPonens p1 p2) :=
+                          by
+                            simp [usedPremises]
+                            apply Finset.subset_union_left
+                         let Hsubset1 := subset_proof Hincl1 (toFinitePremises p1)
+                         have Hincl2 : usedPremises p2 ⊆ usedPremises (modusPonens p1 p2) :=
+                          by
+                            simp [usedPremises]
+                            apply Finset.subset_union_right
+                         let Hsubset2 := subset_proof Hincl2 (toFinitePremises p2)
+                         modusPonens Hsubset1 Hsubset2
+  | syllogism p1 p2 => have Hincl1 : usedPremises p1 ⊆ usedPremises (syllogism p1 p2) :=
+                        by
+                          simp [usedPremises]
+                          apply Finset.subset_union_left
+                       let Hsubset1 := subset_proof Hincl1 (toFinitePremises p1)
+                       have Hincl2 : usedPremises p2 ⊆ usedPremises (syllogism p1 p2) :=
+                        by
+                          simp [usedPremises]
+                          apply Finset.subset_union_right
+                       let Hsubset2 := subset_proof Hincl2 (toFinitePremises p2)
+                       syllogism Hsubset1 Hsubset2
+  | exportation p => exportation (toFinitePremises p)
+  | importation p => importation (toFinitePremises p)
+  | expansion p => expansion (toFinitePremises p)
 
 theorem theorem_finset (p : Proof Γ ϕ) : ∃ (Ω : Finset Formula), Ω.toSet ⊆ Γ /\ Nonempty (Ω.toSet ⊢ ϕ) :=
   by
-    exists (Γ ∩ (proofFormulaeList p).toFinset.toSet).toFinite.toFinset
+    exists usedPremises p
     apply And.intro
-    · simp
-    · simp
-      have HproofFormulaeList : ϕ ∈ (proofFormulaeList p).toFinset.toSet :=
-        by
-          let Hnempty : (proofFormulaeList p) ≠ [] :=
-            by apply proofForulaeList_nonempty
-          have H' : List.head (proofFormulaeList p) Hnempty = ϕ :=
-            by apply proofFormulaeList_last
-          simp
-          apply List.mem_of_elem_eq_true
-          unfold List.elem
-          cases Hlist : proofFormulaeList p
-          · rw [Hlist] at Hnempty; contradiction
-          · simp_rw [Hlist] at H'; simp at H'; rw [H']; simp
-      simp at HproofFormulaeList
-      apply Nonempty.intro
-      cases p with
-      | premise Hvp => have Hinter : ϕ ∈ Γ ∩ {a | a ∈ proofFormulaeList (premise Hvp)} :=
-                        by apply Set.mem_inter; assumption'
-                       apply premise Hinter
-      | contractionDisj => exact contractionDisj
-      | contractionConj => exact contractionConj
-      | weakeningDisj => exact weakeningDisj
-      | weakeningConj => exact weakeningConj
-      | permutationDisj => exact permutationDisj
-      | permutationConj => exact permutationConj
-      | exfalso => exact exfalso
-      | modusPonens p1 p2 => sorry
-      | syllogism p1 p2 => sorry
-      | exportation p => sorry
-      | importation p => sorry
-      | expansion p => sorry
+    · induction p with
+      | premise Hvp => unfold usedPremises; simp; assumption
+      | contractionDisj => unfold usedPremises; simp
+      | contractionConj => unfold usedPremises; simp
+      | weakeningDisj => unfold usedPremises; simp
+      | weakeningConj => unfold usedPremises; simp
+      | permutationDisj => unfold usedPremises; simp
+      | permutationConj => unfold usedPremises; simp
+      | exfalso => unfold usedPremises; simp
+      | modusPonens p1 p2 ih1 ih2 => unfold usedPremises; simp; apply And.intro; assumption'
+      | syllogism p1 p2 ih1 ih2 => unfold usedPremises; simp; apply And.intro; assumption'
+      | importation p ih => unfold usedPremises; assumption
+      | exportation p ih => unfold usedPremises; assumption
+      | expansion p ih => unfold usedPremises; assumption
+    · apply Nonempty.intro
+      apply toFinitePremises
 
 def disjIntroRight
   : Γ ⊢ ψ ⇒ ϕ ∨∨ ψ :=
@@ -747,21 +751,47 @@ theorem complete_pair_fst_disj : @completePair Γ Δ -> @disjunctiveTheory Γ :=
                       · let Hset := Hlist
                         rw [<-List.doubleton_eq] at Hset
                         · simp at Hlist
-                          have Haux : Finset.toList {ϕ, ψ} = [ϕ, ψ] :=
+                          have Haux : Finset.toList {ϕ, ψ} = [ϕ, ψ] \/ Finset.toList {ϕ, ψ} = [ψ, ϕ] :=
                             by
-                              unfold Finset.toList
-                              unfold Multiset.toList
-                              unfold Quotient.out'
-                              unfold Quotient.out
-                              unfold Quot.out
+                              let Hnodup := Finset.nodup_toList {ϕ, ψ}
+                              let Hvpelemdoubleton := Finset.mem_insert_self ϕ {ψ}
+                              let Hpsielemtail := Finset.mem_singleton_self ψ
+                              have Hpsielemdoubleton : ψ = ϕ ∨ ψ ∈ {ψ} := by apply Or.inr; assumption
+                              rw [<-Finset.mem_insert] at Hpsielemdoubleton
+                              rw [<-Finset.mem_toList] at Hvpelemdoubleton
+                              rw [<-Finset.mem_toList] at Hpsielemdoubleton
+                              let Hcard := Finset.card_doubleton Heq
+                              let Hlengthlist := Finset.length_toList {ϕ, ψ}
+                              rw [Hcard] at Hlengthlist
+                              rw [List.length_eq_two] at Hlengthlist
+                              rcases Hlengthlist with ⟨a, ⟨b, Hab⟩⟩
+                              rw [Hab]
+                              rw [Hab] at Hvpelemdoubleton
+                              rw [Hab] at Hpsielemdoubleton
+                              -- let Haux := List.mem_pair Hpsielemdoubleton
+                              have Hauxvp : ϕ = a ∨ ϕ = b := by sorry
+                              have Hauxpsi : ψ = a ∨ ψ = b := by sorry
+                              rcases Hauxvp with Hvpa | Hvpb
+                              · rcases Hauxpsi with Hpsia | Hpsib
+                                · rw [<-Hpsia] at Hvpa
+                                  contradiction
+                                · apply Or.inl
+                                  rw [Hvpa, Hpsib]
+                              · rcases Hauxpsi with Hpsia | Hpsib
+                                · apply Or.inr
+                                  rw [Hvpb, Hpsia]
+                                · rw [<-Hpsib] at Hvpb
+                                  contradiction
+                          -- rcases Haux
+                          by_cases Finset.toList {ϕ, ψ} = [ϕ, ψ]
+                          · rw [h]
+                            simp
+                            apply syllogism weakeningConj (syllogism weakeningDisj orAssoc1)
+                          · by_cases h' : Finset.toList {ϕ, ψ} = [ψ, ϕ]
+                            · rw [h']
                               simp
-                              unfold Classical.choose
-                              unfold Classical.indefiniteDescription
-
-                              sorry
-                          rw [Haux]
-                          simp
-                          apply syllogism (syllogism weakeningConj weakeningDisj) orAssoc1
+                              apply syllogism weakeningConj (syllogism permutationDisj (syllogism weakeningDisj orAssoc1))
+                            · sorry
                         · assumption
 
 theorem disjth_completePair : @disjunctiveTheory Γ -> @completePair Γ Γᶜ :=
