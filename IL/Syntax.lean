@@ -85,14 +85,6 @@ theorem set_conseq_proof (Hset : @set_proof_set Γ Δ) : Δ ⊢ ϕ -> Γ ⊢ ϕ 
     | importation _ ih => exact (importation ih)
     | expansion _ ih => exact (expansion ih)
 
-def proofLength {ϕ : Formula} (p : Proof Γ ϕ) : Nat :=
-  match p with
-  | premise Hvp => 1
-  | contractionDisj | contractionConj | weakeningDisj | weakeningConj
-      | permutationDisj | permutationConj | exfalso => 1
-  | modusPonens p1 p2 | syllogism p1 p2 => proofLength p1 + proofLength p2 + 1
-  | exportation p | importation p | expansion p => proofLength p + 1
-
 noncomputable instance {ϕ ψ : Formula} : Decidable (ϕ = ψ) := @default _ (Classical.decidableInhabited _)
 
 noncomputable def usedPremises {ϕ : Formula} : Proof Γ ϕ -> Finset Formula
@@ -281,8 +273,12 @@ def andAssoc2 : Γ ⊢ ϕ ∧∧ (ψ ∧∧ χ) ⇒ (ϕ ∧∧ ψ) ∧∧ χ :=
 def andAssoc : Γ ⊢ Formula.equivalence (ϕ ∧∧ (ψ ∧∧ χ)) ((ϕ ∧∧ ψ) ∧∧ χ) :=
   conjIntroRule andAssoc2 andAssoc1
 
-def andAssocComm : Γ ⊢ (ϕ ∧∧ ψ) ∧∧ χ ⇒ ψ ∧∧ (χ ∧∧ ϕ) :=
+def andAssocComm1 : Γ ⊢ (ϕ ∧∧ ψ) ∧∧ χ ⇒ ψ ∧∧ (χ ∧∧ ϕ) :=
   conjImplIntroRule andElimLeftRight (conjImplIntroRule conjElimRight andElimLeftLeft)
+
+def andAssocComm2 : Γ ⊢ ϕ ∧∧ (ψ ∧∧ χ) ⇒ ψ ∧∧ (ϕ ∧∧ χ) :=
+  conjImplIntroRule (syllogism andAssoc2 andElimLeftRight)
+                    (syllogism andAssoc2 (conjImplIntroRule andElimLeftLeft conjElimRight))
 
 def extraPremiseConjIntroLeft1 : Γ ⊢ ϕ ⇒ ψ -> Γ ⊢ ϕ ∧∧ χ ⇒ ψ := fun p =>
   syllogism weakeningConj p
@@ -365,9 +361,12 @@ def orAssoc2 : Γ ⊢ ϕ ∨∨ (ψ ∨∨ χ) ⇒ (ϕ ∨∨ ψ) ∨∨ χ :=
 def orAssoc : Γ ⊢ Formula.equivalence (ϕ ∨∨ (ψ ∨∨ χ)) ((ϕ ∨∨ ψ) ∨∨ χ) :=
   conjIntroRule orAssoc2 orAssoc1
 
-def orAssocComm
-  : Γ ⊢ ϕ ∨∨ (ψ ∨∨ χ) ⇒ ψ ∨∨ (χ ∨∨ ϕ) :=
+def orAssocComm1 : Γ ⊢ ϕ ∨∨ (ψ ∨∨ χ) ⇒ ψ ∨∨ (χ ∨∨ ϕ) :=
   syllogism permutationDisj orAssoc1
+
+def orAssocComm2 : Γ ⊢ ϕ ∨∨ (ψ ∨∨ χ) ⇒ ψ ∨∨ (ϕ ∨∨ χ) :=
+  let Hperm := @implOrExtraHyp Γ (ϕ ∨∨ ψ) (ψ ∨∨ ϕ) χ (@permutationDisj Γ ϕ ψ)
+  syllogism orAssoc2 (syllogism Hperm orAssoc1)
 
 def implDistrib : Γ ⊢ (ϕ ⇒ ψ) ⇒ (ψ ⇒ χ) ⇒ (ϕ ⇒ χ) :=
   exportation (exportation (modusPonensExtraHyp (modusPonensExtraHyp conjElimRight andElimLeftLeft) andElimLeftRight))
@@ -513,6 +512,9 @@ noncomputable def deductionTheorem_right {ϕ ψ : Formula} (p : Γ ⊢ ϕ ⇒ ψ
   let p2 : ϕ ∈ Γ ∪ {ϕ} := by rw [Set.mem_union]; apply Or.inr; apply Set.mem_singleton
   modusPonens (premise p2) p1
 
+noncomputable def andTrue : Γ ⊢ ϕ ⇒ (~⊥) ∧∧ ϕ :=
+  conjImplIntroRule (deductionTheorem_left implSelf) implSelf
+
 def dedClosed {Γ : Set Formula} := forall (ϕ : Formula), Γ ⊢ ϕ -> ϕ ∈ Γ
 
 def consistent {Γ : Set Formula} := Γ ⊢ ⊥ -> False
@@ -603,7 +605,7 @@ theorem deductionTheorem_right_ind {Γ : List Formula} {Δ : Set Formula} {ϕ : 
                      rw [List.toFinset_cons, Finset.insert_eq, Finset.coe_union, Finset.coe_singleton, <-Set.union_assoc]
                      assumption
 
-theorem disjunctive_ind {Γ : Set Formula} {Δ : List Formula} {Hnempty : Δ ≠ []}:
+theorem disjunctive_ind {Γ : Set Formula} {Δ : List Formula} {Hnempty : Δ ≠ []} :
   @disjunctive Γ -> Γ ⊢ List.foldr Formula.or ⊥ Δ ->
   ∃(χ : Formula), χ ∈ Δ /\ Nonempty (Γ ⊢ χ) :=
   by
@@ -739,9 +741,6 @@ theorem complete_pair_fst_disj : @completePair Γ Δ -> @disjunctiveTheory Γ :=
                           assumption
                     apply Set.union_subset (And.left Hsubset1) (And.right Hsubset1)
                   · simp
-                    let Htrue := @implSelf (∅ ∪ {ϕ ∨∨ ψ}) ⊥
-                    let Hor := deductionTheorem_right (@implSelf ∅ (ϕ ∨∨ ψ))
-                    let Hconj := deductionTheorem_left (conjIntroRule Hor Htrue)
                     rcases Hlist : [ϕ, ψ] with nil | ⟨h, t⟩
                     · simp at Hlist
                     · by_cases Heq : ϕ = ψ
@@ -753,7 +752,6 @@ theorem complete_pair_fst_disj : @completePair Γ Δ -> @disjunctiveTheory Γ :=
                         · simp at Hlist
                           have Haux : Finset.toList {ϕ, ψ} = [ϕ, ψ] \/ Finset.toList {ϕ, ψ} = [ψ, ϕ] :=
                             by
-                              let Hnodup := Finset.nodup_toList {ϕ, ψ}
                               let Hvpelemdoubleton := Finset.mem_insert_self ϕ {ψ}
                               let Hpsielemtail := Finset.mem_singleton_self ψ
                               have Hpsielemdoubleton : ψ = ϕ ∨ ψ ∈ {ψ} := by apply Or.inr; assumption
@@ -768,30 +766,29 @@ theorem complete_pair_fst_disj : @completePair Γ Δ -> @disjunctiveTheory Γ :=
                               rw [Hab]
                               rw [Hab] at Hvpelemdoubleton
                               rw [Hab] at Hpsielemdoubleton
-                              -- let Haux := List.mem_pair Hpsielemdoubleton
-                              have Hauxvp : ϕ = a ∨ ϕ = b := by sorry
-                              have Hauxpsi : ψ = a ∨ ψ = b := by sorry
-                              rcases Hauxvp with Hvpa | Hvpb
-                              · rcases Hauxpsi with Hpsia | Hpsib
+                              simp at Hvpelemdoubleton
+                              simp at Hpsielemdoubleton
+                              rcases Hvpelemdoubleton with Hvpa | Hvpb
+                              · rcases Hpsielemdoubleton with Hpsia | Hpsib
                                 · rw [<-Hpsia] at Hvpa
                                   contradiction
                                 · apply Or.inl
                                   rw [Hvpa, Hpsib]
-                              · rcases Hauxpsi with Hpsia | Hpsib
+                              · rcases Hpsielemdoubleton with Hpsia | Hpsib
                                 · apply Or.inr
                                   rw [Hvpb, Hpsia]
                                 · rw [<-Hpsib] at Hvpb
                                   contradiction
-                          -- rcases Haux
-                          by_cases Finset.toList {ϕ, ψ} = [ϕ, ψ]
-                          · rw [h]
+                          apply Classical.choice
+                          rcases Haux with Hperm1 | Hperm2
+                          · apply Nonempty.intro
+                            rw [Hperm1]
                             simp
                             apply syllogism weakeningConj (syllogism weakeningDisj orAssoc1)
-                          · by_cases h' : Finset.toList {ϕ, ψ} = [ψ, ϕ]
-                            · rw [h']
-                              simp
-                              apply syllogism weakeningConj (syllogism permutationDisj (syllogism weakeningDisj orAssoc1))
-                            · sorry
+                          · apply Nonempty.intro
+                            rw [Hperm2]
+                            simp
+                            apply syllogism weakeningConj (syllogism permutationDisj (syllogism weakeningDisj orAssoc1))
                         · assumption
 
 theorem disjth_completePair : @disjunctiveTheory Γ -> @completePair Γ Γᶜ :=
@@ -874,6 +871,87 @@ theorem consistent_disj :
       apply Haux'
       apply syllogism weakeningConj weakeningDisj
 
+theorem permutationConj_ind (l1 l2 : List Formula) (Hperm : l1 ~ l2) :
+  Nonempty (∅ ⊢ List.foldr Formula.and (~⊥) l1 ⇒ List.foldr Formula.and (~⊥) l2) :=
+  by
+    induction Hperm with
+    | nil => simp; apply Nonempty.intro; apply implSelf
+    | @cons x l1' l2' ihperm ihequiv => simp; apply Nonempty.intro; let Haux := Classical.choice ihequiv
+                                        let Haux' := @conjElimRight ∅ x (List.foldr Formula.and (~⊥) l1')
+                                        let Hsyllog := syllogism Haux' Haux
+                                        let Haux'' := @weakeningConj ∅ x (List.foldr Formula.and (~⊥) l1')
+                                        apply conjImplIntroRule Haux'' Hsyllog
+    | swap x y l => simp; apply Nonempty.intro; apply andAssocComm2
+    | @trans l1' l2' l3' ihperm12 ihperm23 ihequiv12 ihequiv23 => apply Nonempty.intro;
+                                                                  apply syllogism (Classical.choice ihequiv12) (Classical.choice ihequiv23)
+
+theorem permutationDisj_ind (l1 l2 : List Formula) (Hperm : l1 ~ l2) :
+  Nonempty (∅ ⊢ List.foldr Formula.or ⊥ l1 ⇒ List.foldr Formula.or ⊥ l2) :=
+  by
+    induction Hperm with
+    | nil => simp; apply Nonempty.intro; apply implSelf
+    | @cons x l1' l2' ihperm ihequiv => simp; apply Nonempty.intro; let Haux := Classical.choice ihequiv
+                                        apply expansion Haux
+    | swap x y l => simp; apply Nonempty.intro; apply orAssocComm2
+    | @trans l1' l2' l3' ihperm12 ihperm23 ihequiv12 ihequiv23 => apply Nonempty.intro;
+                                                                  apply syllogism (Classical.choice ihequiv12) (Classical.choice ihequiv23)
+
+theorem foldrAndUnion (Φ Ω : Finset Formula) :
+  Nonempty (∅ ⊢ List.foldr Formula.and (~⊥) (Φ ∪ Ω).toList ⇒
+                 List.foldr Formula.and (~⊥) Φ.toList ∧∧ List.foldr Formula.and (~⊥) Ω.toList) :=
+  by
+    induction Φ.toList with
+    | nil => simp; apply Nonempty.intro
+             have Hphiempty : Φ = ∅ := by rw [<-Finset.toList_eq_nil]; sorry
+             rw [Hphiempty]; simp
+             apply andTrue
+    | cons h t ih => simp; apply Nonempty.intro
+                     let ih := Classical.choice ih
+                     let Hnempty := Φ.toList ≠ []
+                     have Hpremise : ∅ ∪ ((Φ ∪ Ω).toList).toFinset ⊢ h := by apply premise; simp; rw [<-Finset.mem_toList]; apply Or.inl; sorry -- apply List.head_mem Hnempty;
+                     apply syllogism (conjImplIntroRule (importation_ind (deductionTheorem_left_ind Hpremise)) ih) andAssoc2
+
+theorem foldrOrUnion (Φ Ω : Finset Formula) :
+  Nonempty (∅ ⊢ List.foldr Formula.or ⊥ Φ.toList ∨∨ List.foldr Formula.or ⊥ Ω.toList ⇒
+                List.foldr Formula.or ⊥ (Φ ∪ Ω).toList) :=
+  by
+    let Hphiaux := Φ.toList
+    induction Φ.toList with
+    | nil => simp at Hphiaux
+             simp; apply Nonempty.intro
+             let Hphiempty : Φ = ∅ := by rw [<-Finset.toList_eq_nil]; sorry
+             rw [Hphiempty]; simp
+             apply syllogism permutationDisj orFalse
+    | cons h t ih => simp; apply Nonempty.intro
+                     let ih := Classical.choice ih
+                     let Hexp := @expansion ∅ (List.foldr Formula.or ⊥ t∨∨List.foldr Formula.or ⊥ (Finset.toList Ω))
+                                            (List.foldr Formula.or ⊥ (Finset.toList (Φ ∪ Ω))) h ih
+                     let Hself := @implSelf ∅ (List.foldr Formula.or ⊥ (Finset.toList (Φ ∪ Ω)))
+                     have Haux : Φ ∪ Ω = {h} ∪ ((Φ ∪ Ω) \ {h}) :=
+                      by
+                        simp
+                        apply Or.inl
+                        rw [<-Finset.mem_toList]
+                        sorry
+                     have Hnotin : h ∉ (Φ ∪ Ω) \ {h} := by simp
+                     have Hperm : (Φ ∪ Ω).toList ~ h :: ((Φ ∪ Ω) \ {h}).toList :=
+                      by
+                        let Hcons := Finset.toList_cons Hnotin
+                        simp at Hcons
+                        rw [Finset.insert_eq] at Hcons
+                        rw [<-Haux] at Hcons
+                        assumption
+                     let Hpermsymm := List.Perm.symm Hperm
+                     let Hpermequiv := Classical.choice (permutationDisj_ind (h :: Finset.toList ((Φ ∪ Ω) \ {h})) (Finset.toList (Φ ∪ Ω)) Hpermsymm)
+                     simp at Hpermequiv
+                     have Hh : ∅ ⊢ h ⇒ List.foldr Formula.or ⊥ (Finset.toList (Φ ∪ Ω)) :=
+                      by
+                        let Hweak := @weakeningDisj ∅ h (List.foldr Formula.or ⊥ (Finset.toList ((Φ ∪ Ω) \ {h})))
+                        apply syllogism Hweak Hpermequiv
+                     let Hdisj := disjIntroAtHyp Hh Hself
+                     let Hsyllog := syllogism Hexp Hdisj
+                     apply syllogism orAssoc1 Hsyllog
+
 theorem add_preserves_cons :
   @consistentPair Γ Δ -> forall (ϕ : Formula), @consistentPair ({ϕ} ∪ Γ) Δ ∨ @consistentPair Γ ({ϕ} ∪ Δ) :=
   by
@@ -890,7 +968,7 @@ theorem add_preserves_cons :
       push_neg at Hncons2
       rcases Hncons2 with ⟨Φ2, Ω2, h2, h2', h2''⟩
       rcases h2'' with ⟨w2, h2''⟩
-      have Hvpi1 : vp ∈ Φ1 :=
+      have Hvp1 : vp ∈ Φ1 :=
         by
           by_cases vp ∈ Φ1
           · assumption
@@ -899,6 +977,8 @@ theorem add_preserves_cons :
             let Hsubset := Disjoint.subset_right_of_subset_union h1 h
             let Hncons := Hcons Φ1 Ω1 Hsubset h1' w1
             assumption
+      have Hauxvp1 : Φ1 = {vp} ∪ Φ1 \ {vp} := by simp; assumption
+      rw [Hauxvp1] at w1
       have Hvpi2 : vp ∈ Ω2 :=
         by
           by_cases vp ∈ Ω2
@@ -908,73 +988,74 @@ theorem add_preserves_cons :
             let Hsubset := Disjoint.subset_right_of_subset_union h2' h
             let Hncons := Hcons Φ2 Ω2 h2 Hsubset w2
             assumption
+      have Hauxvp2 : Ω2 = {vp} ∪ Ω2 \ {vp} := by simp; assumption
+      rw [Hauxvp2] at w2
       have Hnempty1 : Finset.Nonempty {vp} := by apply Finset.singleton_nonempty
       have Hnemptyunion1 : Finset.Nonempty ({vp} ∪ Φ2) := by apply Finset.Nonempty.inl; assumption
       let Hnemptylist1 := Finset.Nonempty.toList_ne_nil Hnemptyunion1
       have Hnempty2 : Finset.Nonempty {vp} := by apply Finset.singleton_nonempty
       have Hnemptyunion2 : Finset.Nonempty ({vp} ∪ Ω1) := by apply Finset.Nonempty.inl; assumption
       let Hnemptylist2 := Finset.Nonempty.toList_ne_nil Hnemptyunion2
-      rcases Hlist2 : Φ1.toList with nil | ⟨head1, t1⟩
-      · simp at Hlist2
-        let Hnempty := Finset.ne_empty_of_mem Hvpi1
-        contradiction
-      · rw [Hlist2] at w1
-        simp at w1
-        have Hnemptyphi1 : Finset.toList Φ1 ≠ [] :=
+      have Haux : vp ∉ Φ1 \ {vp} := by simp
+      let Hperm := List.Perm.symm (Finset.toList_cons Haux)
+      let Hpermconjequiv := Classical.choice (permutationConj_ind (vp :: Finset.toList (Φ1 \ {vp})) (Finset.toList (Finset.cons vp (Φ1 \ {vp}) Haux)) Hperm)
+      simp at Hpermconjequiv
+      let w1 := syllogism Hpermconjequiv w1
+      have Hnemptyphi1 : Finset.toList Φ1 ≠ [] :=
           by
             have Hnempty : Finset.Nonempty Φ1 := by exists vp
             apply Finset.Nonempty.toList_ne_nil
             assumption
-        let Hexp := exportation w1
-        let Hperm := permuteHyps Hexp
-        let Hweakconj := @weakeningConj ∅ (List.foldr Formula.and (~⊥) t1) (List.foldr Formula.and (~⊥) Φ2.toList ∧∧ List.head Φ1.toList Hnemptyphi1)
-        let Hsyllog1 := syllogism Hweakconj Hperm
-        let Hded1 := deductionTheorem_right Hsyllog1
-        let Hweakdisj := @weakeningDisj (∅ ∪ {List.foldr Formula.and (~⊥) t1∧∧List.foldr Formula.and (~⊥) (Finset.toList Φ2)  ∧∧ List.head Φ1.toList Hnemptyphi1})
-                             (List.foldr Formula.or ⊥ (Finset.toList Ω1)) (List.foldr Formula.or ⊥ (Finset.toList Ω2))
-        let Hsyllog2 := syllogism Hded1 Hweakdisj
-        let Hded' := deductionTheorem_left Hsyllog2
-        let Hassocomm := @andAssocComm ∅ (List.head (Finset.toList Φ1) Hnemptyphi1) (List.foldr Formula.and (~⊥) t1) (List.foldr Formula.and (~⊥) (Finset.toList Φ2))
-        let Hsyllog2 := deductionTheorem_right (syllogism Hassocomm Hded')
-        rw [Set.empty_union] at Hsyllog2
-        rcases Hlist1 : Ω2.toList with nil | ⟨head2, t2⟩
-        · simp at Hlist1
-          let Hnempty := Finset.ne_empty_of_mem Hvpi2
-          contradiction
-        · rw [Hlist1] at w2
-          simp at w2
-          have Hnemptyomega2 : Finset.toList Ω2 ≠ [] :=
-            by
-              have Hnempty : Finset.Nonempty Ω2 := by exists vp
-              apply Finset.Nonempty.toList_ne_nil
-              assumption
-          let Hperm := @permutationDisj ∅ head2 (List.foldr Formula.or ⊥ t2)
-          let Hsyllog := syllogism w2 Hperm
-          let Hdni := @dni ∅ head2
-          let Hexp := @expansion ∅ head2 (~~head2) (List.foldr Formula.or ⊥ t2) Hdni
-          let Hperm' := @permutationDisj ∅ (List.foldr Formula.or ⊥ t2) (~~head2)
-          let Hsyllog' := syllogism Hexp Hperm'
-          let Himpldef := @impldef ∅ (~head2) (List.foldr Formula.or ⊥ t2)
-          let Hsyllog'' := syllogism Hsyllog' Himpldef
-          let Hsyllog''' := syllogism Hsyllog Hsyllog''
-          let Hded2 := deductionTheorem_right Hsyllog'''
-          let Hded3 := deductionTheorem_left Hded2
-          let Hweakconj := @weakeningConj ∅ (List.foldr Formula.and (~⊥) Φ2.toList) (List.foldr Formula.and (~⊥) (Finset.toList Φ1))
-          let Hsyllog3 := syllogism Hweakconj Hded3
-          let Hded4 := deductionTheorem_right Hsyllog3
-          let Hweakdisj := @weakeningDisj (∅ ∪ {List.foldr Formula.and (~⊥) (Finset.toList Φ2)∧∧List.foldr Formula.and (~⊥) (Finset.toList Φ1)})
-                               (List.foldr Formula.or ⊥ t2) (List.foldr Formula.or ⊥ (Finset.toList Ω1) ∨∨ List.head Ω2.toList Hnemptyomega2)
-          let Hsyllog4 := syllogism Hded4 Hweakdisj
-          let Hded' := deductionTheorem_left Hsyllog4
-          let Hassocomm := @orAssocComm (∅ ∪ {List.foldr Formula.and (~⊥) (Finset.toList Φ2)∧∧List.foldr Formula.and (~⊥) (Finset.toList Φ1)}) (List.foldr Formula.or ⊥ t2) (List.foldr Formula.or ⊥ (Finset.toList Ω1)) (List.head (Finset.toList Ω2) Hnemptyomega2)
-          let Hded'' := deductionTheorem_right Hded'
-          let Hsyllog4 := deductionTheorem_left (deductionTheorem_right (syllogism Hded'' Hassocomm))
-          rw [Set.empty_union] at Hsyllog4
-          have Hcontra' : ∅ ∪ {List.foldr Formula.and (~⊥) (Finset.toList Φ2)} ⊢ List.foldr Formula.or ⊥ (Finset.toList Ω1) :=
-            by sorry
-          let Hded := deductionTheorem_left Hcontra'
-          let Hconsspec := Hcons Φ2 Ω1 h2 h1' Hded
+      let Hexp := exportation w1
+      let Hperm := permuteHyps Hexp
+      let Hweakconj := @weakeningConj ∅ (List.foldr Formula.and (~⊥) (Φ1 \ {vp}).toList) (List.foldr Formula.and (~⊥) Φ2.toList)
+      let Hsyllog1 := syllogism Hweakconj Hperm
+      let Hded1 := deductionTheorem_right Hsyllog1
+      let Hweakdisj := @weakeningDisj (∅ ∪ {List.foldr Formula.and (~⊥) (Φ1 \ {vp}).toList ∧∧ List.foldr Formula.and (~⊥) (Finset.toList Φ2)})
+                              (List.foldr Formula.or ⊥ (Finset.toList Ω1)) (List.foldr Formula.or ⊥ (Ω2 \ {vp}).toList)
+      let Hsyllog2 := syllogism Hded1 Hweakdisj
+      let Hded' := deductionTheorem_left Hsyllog2
+      let Hsyllog2 := deductionTheorem_right Hded'
+      have Haux : vp ∉ Ω2 \ {vp} := by simp
+      let Hperm := Finset.toList_cons Haux
+      let Hpermdisjequiv := Classical.choice (permutationDisj_ind (Finset.toList (Finset.cons vp (Ω2 \ {vp}) Haux)) (vp :: Finset.toList (Ω2 \ {vp}))  Hperm)
+      simp at Hpermdisjequiv
+      let w2 := syllogism w2 Hpermdisjequiv
+      have Hnemptyomega2 : Finset.toList Ω2 ≠ [] :=
+        by
+          have Hnempty : Finset.Nonempty Ω2 := by exists vp
+          apply Finset.Nonempty.toList_ne_nil
           assumption
+      let Hperm := @permutationDisj ∅ vp (List.foldr Formula.or ⊥ (Ω2 \ {vp}).toList)
+      let Hsyllog := syllogism w2 Hperm
+      let Hdni := @dni ∅ vp
+      let Hexp := @expansion ∅ vp (~~vp) (List.foldr Formula.or ⊥ (Ω2 \ {vp}).toList) Hdni
+      let Hperm' := @permutationDisj ∅ (List.foldr Formula.or ⊥ (Ω2 \ {vp}).toList) (~~vp)
+      let Hsyllog' := syllogism Hexp Hperm'
+      let Himpldef := @impldef ∅ (~vp) (List.foldr Formula.or ⊥ (Ω2 \ {vp}).toList)
+      let Hsyllog'' := syllogism Hsyllog' Himpldef
+      let Hsyllog''' := syllogism Hsyllog Hsyllog''
+      let Hded2 := deductionTheorem_right Hsyllog'''
+      let Hded3 := deductionTheorem_left Hded2
+      let Hweakconj := @weakeningConj ∅ (List.foldr Formula.and (~⊥) Φ2.toList) (List.foldr Formula.and (~⊥) (Φ1 \ {vp}).toList)
+      let Hweakperm := @permutationConj ∅ (List.foldr Formula.and (~⊥) (Φ1 \ {vp}).toList) (List.foldr Formula.and (~⊥) Φ2.toList)
+      let Hsyllog3 := syllogism (syllogism Hweakperm Hweakconj) Hded3
+      let Hded4 := deductionTheorem_right Hsyllog3
+      let Hweakdisj := @weakeningDisj (∅ ∪ {List.foldr Formula.and (~⊥) (Φ1 \ {vp}).toList ∧∧ List.foldr Formula.and (~⊥) (Finset.toList Φ2)})
+                               (List.foldr Formula.or ⊥ (Ω2 \ {vp}).toList) (List.foldr Formula.or ⊥ (Finset.toList Ω1))
+      let Hsyllog4 := syllogism Hded4 Hweakdisj
+      let Hded' := deductionTheorem_left Hsyllog4
+      let Hded'' := deductionTheorem_right Hded'
+      let Hpermdisj := @permutationDisj (∅ ∪ {List.foldr Formula.and (~⊥) (Φ1 \ {vp}).toList ∧∧ List.foldr Formula.and (~⊥) (Finset.toList Φ2)}) (List.foldr Formula.or ⊥ (Ω2 \ {vp}).toList) (List.foldr Formula.or ⊥ (Finset.toList Ω1))
+      let Hsyllog4 := deductionTheorem_left (deductionTheorem_right (syllogism Hded'' Hpermdisj))
+      let Hcontra := deductionTheorem_left (contra Hsyllog2 Hsyllog4)
+      let Hfoldr := syllogism (Classical.choice (foldrAndUnion (Φ1 \ {vp}) Φ2)) Hcontra
+      let Hcontra' := deductionTheorem_right (syllogism Hfoldr (Classical.choice (foldrOrUnion Ω1 (Ω2 \ {vp}))))
+      let Hded := deductionTheorem_left Hcontra'
+      have Hauxunionphi : ↑((Φ1 \ {vp}) ∪ Φ2) ⊆ Γ := by simp; apply And.intro; rw [Set.insert_eq]; assumption'
+      have Hauxunionomega : ↑(Ω1 ∪ (Ω2 \ {vp})) ⊆ Δ := by simp; apply And.intro; assumption; rw [Set.insert_eq]; assumption
+      let Hconsspec := Hcons ((Φ1 \ {vp}) ∪ Φ2) (Ω1 ∪ (Ω2 \ {vp})) Hauxunionphi Hauxunionomega Hded
+      assumption
     · by_cases h' : @consistentPair ({vp} ∪ Γ) Δ
       · apply Or.inl; assumption
       · apply Or.inr
