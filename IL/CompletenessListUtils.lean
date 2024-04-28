@@ -10,22 +10,16 @@ set_option autoImplicit false
 
 variable {Γ Δ : Set Formula} {ϕ ψ χ γ : Formula}
 
-@[simp]
-def list_indices (Φ : List Formula) (f : Formula -> Nat) : List Nat :=
-  match Φ with
-  | [] => []
-  | h :: t => (f h) :: list_indices t f
-
 lemma perm_list_indices_mem (Φ Ω : List Formula) (Hperm : Φ ~ Ω) (f : Formula -> Nat) :
-  ∀ (ϕ : Formula), f ϕ ∈ list_indices Φ f -> f ϕ ∈ list_indices Ω f :=
+  ∀ (ϕ : Formula), f ϕ ∈ List.map f Φ -> f ϕ ∈ List.map f Ω :=
   by
     induction Hperm with
     | nil => simp
     | @cons x l1' l2' ihperm ihequiv => simp
                                         intros ϕ Hor
-                                        cases Hor
+                                        rcases Hor with Hh | ⟨a, ⟨Hain, Hfeq⟩⟩
                                         · apply Or.inl; assumption
-                                        · apply Or.inr; apply ihequiv; assumption
+                                        · apply Or.inr; simp at ihequiv; apply ihequiv; assumption'
     | swap x y l => simp
                     intros ϕ Hor
                     rcases Hor with _ | H2
@@ -33,12 +27,12 @@ lemma perm_list_indices_mem (Φ Ω : List Formula) (Hperm : Φ ~ Ω) (f : Formul
                     · cases H2
                       · apply Or.inl; assumption
                       · apply Or.inr; apply Or.inr; assumption
-    | @trans l1' l2' l3' ihperm12 ihperm23 ihequiv12 ihequiv23 => intros ϕ Hl1
-                                                                  exact ihequiv23 ϕ (ihequiv12 ϕ Hl1)
+    | @trans l1' _ _ _ _ ihequiv12 ihequiv23 => intros ϕ Hl1
+                                                exact ihequiv23 ϕ (ihequiv12 ϕ Hl1)
 
 @[simp]
 def pf_elem (Φ : Finset Formula) (f : Formula -> Nat) :=
-  ∀ (ϕ : Formula), ϕ ∈ Φ.toList -> f ϕ ∈ list_indices Φ.toList f
+  ∀ (ϕ : Formula), ϕ ∈ Φ.toList -> f ϕ ∈ List.map f Φ.toList
 
 lemma f_elem_in_list_indices_empty (f : Formula -> Nat) : pf_elem ∅ f := by simp
 
@@ -46,33 +40,22 @@ noncomputable instance {ϕ ψ : Formula} : Decidable (ϕ = ψ) := @default _ (Cl
 
 noncomputable instance {ϕ : Formula} {Γ : Set Formula} : Decidable (ϕ ∈ Γ) := @default _ (Classical.decidableInhabited _)
 
-lemma f_elem_in_list_indices_insert (Φ : Finset Formula) (f : Formula -> Nat) (Hnotin : ϕ ∉ Φ) (Hprev : pf_elem Φ f) :
+lemma f_elem_in_list_indices_insert (Φ : Finset Formula) (f : Formula -> Nat) :
   pf_elem (insert ϕ Φ) f :=
     by
       simp
-      apply And.intro
-      · rw [Finset.insert_eq]
-        let Hperm := perm_list_indices_mem (ϕ :: Finset.toList Φ) (Finset.toList ({ϕ} ∪ Φ)) (List.Perm.symm (Finset.toList_insert Hnotin)) f ϕ
-        apply Hperm
-        simp
-      · intros a Hmem
-        simp at Hprev
-        let Hprev := Hprev a Hmem
-        rw [Finset.insert_eq]
-        let Hperm := perm_list_indices_mem (ϕ :: Finset.toList Φ) (Finset.toList ({ϕ} ∪ Φ)) (List.Perm.symm (Finset.toList_insert Hnotin)) f a
-        apply Hperm
-        simp
-        apply Or.inr
-        assumption
+      intro a _
+      apply Or.inr
+      exists a
 
 lemma f_elem_in_list_indices (Φ : Finset Formula) (f : Formula -> Nat) : pf_elem Φ f :=
   by
     induction Φ using Finset.induction_on with
     | empty => exact f_elem_in_list_indices_empty f
-    | @insert ϕ Φ Hnotin Hprev => exact f_elem_in_list_indices_insert Φ f Hnotin Hprev
+    | @insert ϕ Φ => exact f_elem_in_list_indices_insert Φ f
 
 noncomputable def pair_finset_indices (Φ Ω : Finset Formula) (f : Formula -> Nat) : (List Nat × List Nat) :=
-  (list_indices Φ.toList f, list_indices Ω.toList f)
+  (List.map f Φ.toList, List.map f Ω.toList)
 
 @[simp]
 def maximum (l : List Nat) : Nat :=
