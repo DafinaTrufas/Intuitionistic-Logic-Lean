@@ -288,8 +288,8 @@ lemma kripke_alg {W : Type} {M : KripkeModel W} (ϕ : Formula) :
 def prime_filters_frame (I : Var → α) :
   KripkeModel (@prime_filters α _) :=
   {
-   R := λ (F1 F2) => F1.1 ⊆ F2.1,
-   V := λ (v F) => I v ∈ F.1,
+   R := λ (F1 F2) => F1.1 ⊆ F2.1
+   V := λ (v F) => I v ∈ F.1
    refl := λ (F) => Set.Subset.rfl
    trans := λ (F1 F2 Φ) => Set.Subset.trans
    monotonicity := λ (v F1 F2) => by intros; apply Set.mem_of_mem_of_subset; assumption'

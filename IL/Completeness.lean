@@ -16,7 +16,7 @@ def consistent {Γ : Set Formula} := Γ ⊢ ⊥ -> False
 def disjunctive {Γ : Set Formula} := ∀ (ϕ ψ : Formula), Γ ⊢ ϕ ∨∨ ψ -> Sum (Γ ⊢ ϕ) (Γ ⊢ ψ)
 
 def disjunctiveTheory {Γ : Set Formula} :=
-  @dedClosed Γ /\ @consistent Γ /\ Nonempty (@disjunctive Γ)
+  @dedClosed Γ ∧ @consistent Γ ∧ Nonempty (@disjunctive Γ)
 
 abbrev setDisjTh := {Γ // @disjunctiveTheory Γ}
 
@@ -592,7 +592,7 @@ lemma union_consistent {Hcons :  @consistentPair Γ Δ} (fn : Formula -> Nat) (f
       assumption
 
 lemma consistent_incl_complete :
-  @consistentPair Γ Δ -> (∃ (Γ' Δ' : Set Formula), Γ ⊆ Γ' ∧ Δ ⊆ Δ' ∧ @completePair Γ' Δ') :=
+  @consistentPair Γ Δ → (∃ (Γ' Δ' : Set Formula), Γ ⊆ Γ' ∧ Δ ⊆ Δ' ∧ @completePair Γ' Δ') :=
   by
     intros Hcons
     let ⟨fn, fn_inj⟩ := exists_injective_nat Formula

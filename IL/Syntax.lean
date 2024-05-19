@@ -73,7 +73,7 @@ def orIntroLeftLeft : Γ ⊢ ϕ ⇒ (ϕ ∨∨ ψ) ∨∨ χ := syllogism weaken
 def orIntroLeftRight : Γ ⊢ ψ ⇒ (ϕ ∨∨ ψ) ∨∨ χ := syllogism disjIntroRight weakeningDisj
 
 def conjIntroRule : Γ ⊢ ϕ → Γ ⊢ ψ → Γ ⊢ ϕ ∧∧ ψ :=
-  fun p1 p2 => modusPonens p2 (modusPonens p1 (exportation implSelf))
+  fun p1 p2 => modusPonens p2 (modusPonens p1 conjIntro)
 
 def conjIntroRule' : Γ ⊢ ϕ ∧∧ ψ → Nonempty (Γ ⊢ ϕ) ∧ Nonempty (Γ ⊢ ψ) :=
   fun p => And.intro (Nonempty.intro (modusPonens p weakeningConj)) ((Nonempty.intro (modusPonens p conjElimRight)))
