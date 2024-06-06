@@ -819,16 +819,13 @@ theorem completeness_alg (ϕ : Formula) :
       exact Halg (Quotient (@setoid_formula Γ)) h_quot_var set_true_in_lt
     · exact soundness_alg ϕ
 
-theorem alg_kripke_valid (ϕ : Formula) :
-  alg_valid ϕ → valid ϕ :=
+theorem alg_kripke_valid_equiv (ϕ : Formula) :
+  alg_valid ϕ ↔ valid ϕ :=
   by
-    intro Halg _ _
-    rw [kripke_alg]
-    apply Halg
-
-theorem kripke_alg_valid (ϕ : Formula) :
-  valid ϕ → alg_valid ϕ :=
-  by
-    intro Hvalid _ _ _
-    rw [alg_kripke]
-    apply Hvalid
+    apply Iff.intro
+    · intro Halg _ _
+      rw [kripke_alg]
+      apply Halg
+    · intro Hvalid _ _ _
+      rw [alg_kripke]
+      apply Hvalid
