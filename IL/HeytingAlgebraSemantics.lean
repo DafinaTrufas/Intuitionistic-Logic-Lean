@@ -2,6 +2,7 @@ import IL.HeytingAlgebraUtils
 import IL.Formula
 import IL.Semantics
 import IL.Soundness
+import IL.Completeness
 
 variable {α : Type} [HeytingAlgebra α]
 
@@ -36,7 +37,7 @@ def valid_in_alg (ϕ : Formula) : Prop := ∀ (I : Var → α), true_in_alg_mode
 def alg_valid (ϕ : Formula) : Prop := ∀ (α : Type) [HeytingAlgebra α], @valid_in_alg α _ ϕ
 
 def set_true_in_alg_model (I : Var → α) (Γ : Set Formula) : Prop :=
-  ∀ (ϕ : Formula), ϕ ∈ Γ → AlgInterpretation I ϕ = Top.top
+  ∀ (ϕ : Formula), ϕ ∈ Γ → true_in_alg_model I ϕ
 
 def set_valid_in_alg (Γ : Set Formula) : Prop := ∀ (I : Var → α), set_true_in_alg_model I Γ
 
@@ -681,6 +682,7 @@ lemma set_true_in_lt :
   @set_true_in_alg_model (Quotient (@setoid_formula Γ)) _ h_quot_var Γ :=
   by
     intro ϕ Hin
+    unfold true_in_alg_model
     rw [<-h_quot_interpretation]
     unfold h_quot
     rw [<-equiv_top]
@@ -817,14 +819,14 @@ theorem completeness_alg (ϕ : Formula) :
       exact Halg (Quotient (@setoid_formula Γ)) h_quot_var set_true_in_lt
     · exact soundness_alg ϕ
 
-theorem alg_true_kripke (ϕ : Formula) :
+theorem alg_kripke_valid (ϕ : Formula) :
   alg_valid ϕ → valid ϕ :=
   by
     intro Halg _ _
     rw [kripke_alg]
     apply Halg
 
-theorem kripke_alg_true (ϕ : Formula) :
+theorem kripke_alg_valid (ϕ : Formula) :
   valid ϕ → alg_valid ϕ :=
   by
     intro Hvalid _ _ _
