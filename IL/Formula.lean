@@ -8,81 +8,82 @@ structure Var where
   val : Nat
 
 inductive Formula where
-| var : Var → Formula
+| var : Var -> Formula
 | bottom : Formula
-| and : Formula → Formula → Formula
-| or : Formula → Formula → Formula
-| implication : Formula → Formula → Formula
+| and : Formula -> Formula -> Formula
+| or : Formula -> Formula -> Formula
+| implication : Formula -> Formula -> Formula
 
 namespace Formula
 
+infixr:60 "∧∧" => and
+
+infixr:60 "∨∨" => or
+
+infixr:50 (priority := high) "⇒" => implication
+
 notation "⊥" => bottom
-
-infixl:60 " ∧∧ " => and
-
-infixl:60 " ∨∨ " => or
-
-infixr:50 (priority := high) " ⇒ " => implication
-
-def equivalence (ϕ ψ : Formula) := (ϕ ⇒ ψ) ∧∧ (ψ ⇒ ϕ)
-infix:40 " ⇔ " => equivalence
 
 def negation (ϕ : Formula) : Formula := ϕ ⇒ ⊥
 prefix:70 "~" => negation
 
-def top : Formula := ~⊥
-notation "⊤" => top
+def equivalence (ϕ ψ : Formula) := (ϕ ⇒ ψ) ∧∧ (ψ ⇒ ϕ)
+infix:50 "⇔" => equivalence
 
 def pairing (x y : ℕ) := (x + y) * (x + y + 1) + 2 * x
 
-lemma pairing_0 {x y : ℕ} : pairing x y = 0 → x = 0 ∧ y = 0 :=
+lemma pairing_0_iff (x y : ℕ) : pairing x y = 0 <-> x = 0 ∧ y = 0 :=
   by
-    intro Hp
-    unfold pairing at Hp
-    by_cases hx : x = 0
-    · apply And.intro
-      · assumption
-      · by_cases hy : y = 0
-        · assumption
-        · rcases Nat.eq_zero_or_pos y with H0 | Hpos
-          · contradiction
-          · rw [hx] at Hp
-            simp at Hp
-            have H : 2 <= y * (y + 1) :=
-              by
-                apply @Nat.le_trans 2 (y + 1)
-                · apply Nat.succ_le_of_lt; simp; assumption
-                · simp; assumption
-            rw [Hp] at H
-            contradiction
-    · apply And.intro
-      · rcases Nat.eq_zero_or_pos x with H0 | _
+    apply Iff.intro
+    · intro Hp
+      unfold pairing at Hp
+      by_cases hx : x = 0
+      · apply And.intro
         · assumption
         · by_cases hy : y = 0
-          · rw [hy] at Hp
-            simp at Hp
-            exact Hp
-          · have H : 2 <= (x + y) * (x + y + 1) :=
-              by
-                apply @Nat.le_trans 2 (x + y + 1)
-                · apply Nat.succ_le_of_lt; simp; apply Or.inl; assumption
-                · simp; apply @Nat.le_trans 1 x
+          · assumption
+          · rcases Nat.eq_zero_or_pos y with H0 | Hpos
+            · contradiction
+            · rw [hx] at Hp
+              simp at Hp
+              have H : 2 <= y * (y + 1) :=
+                by
+                  apply @Nat.le_trans 2 (y + 1)
+                  · apply Nat.succ_le_of_lt; simp; assumption
+                  · simp; assumption
+              rw [Hp] at H
+              contradiction
+      · apply And.intro
+        · rcases Nat.eq_zero_or_pos x with H0 | _
+          · assumption
+          · by_cases hy : y = 0
+            · rw [hy] at Hp
+              simp at Hp
+              exact Hp
+            · have H : 2 <= (x + y) * (x + y + 1) :=
+                by
+                  apply @Nat.le_trans 2 (x + y + 1)
+                  · apply Nat.succ_le_of_lt; simp; apply Or.inl; assumption
+                  · simp; apply @Nat.le_trans 1 x
+                    · assumption
+                    · simp
+              have H : 2 <= (x + y) * (x + y + 1) + 2 * x :=
+                by
+                  apply @Nat.le_trans 2 ((x + y) * (x + y + 1))
                   · assumption
                   · simp
-            have H : 2 <= (x + y) * (x + y + 1) + 2 * x :=
-              by
-                apply @Nat.le_trans 2 ((x + y) * (x + y + 1))
-                · assumption
-                · simp
-            rw [Hp] at H
+              rw [Hp] at H
+              contradiction
+        · rcases Nat.eq_zero_or_pos x with H0 | _
+          · contradiction
+          · simp at Hp
+            rcases Hp
             contradiction
-      · rcases Nat.eq_zero_or_pos x with H0 | _
-        · contradiction
-        · simp at Hp
-          rcases Hp
-          contradiction
+    · intro H0
+      rw [H0.left, H0.right]
+      simp
 
-lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
+lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t <->
   x = z ∧ y = t :=
   by
     apply Iff.intro
@@ -118,7 +119,7 @@ lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
           have Heq'' : 2 * x - 2 * z = (d + a) * (d + a + 1) - a * (a + 1) :=
             by
               apply Nat.sub_eq_of_eq_add
-              have Haux' : ∀ (a b c : ℕ), c ≤ a → a + b - c = a - c + b :=
+              have Haux' : ∀ (a b c : ℕ), c ≤ a -> a + b - c = a - c + b :=
                 by
                   intro a b c Hle
                   apply Nat.sub_eq_of_eq_add
@@ -189,7 +190,7 @@ lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
           have Heq'' : 2 * z - 2 * x = (d + b) * (d + b + 1) - b * (b + 1) :=
             by
               apply Nat.sub_eq_of_eq_add
-              have Haux' : ∀ (a b c : ℕ), c ≤ a → a + b - c = a - c + b :=
+              have Haux' : ∀ (a b c : ℕ), c ≤ a -> a + b - c = a - c + b :=
                 by
                   intro a b c Hle
                   apply Nat.sub_eq_of_eq_add
@@ -250,7 +251,7 @@ lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
     · intro Heq
       rw [Heq.left, Heq.right]
 
-def encode_form : Formula → ℕ
+def encode_form : Formula -> ℕ
   | var v => pairing 0 (v.val + 1)
   | bottom => 0
   | ϕ ∧∧ ψ => pairing (pairing (encode_form ϕ) 1) (encode_form ψ)
@@ -267,30 +268,55 @@ theorem inject_Form : encode_form.Injective :=
                   rcases h with ⟨_, hr⟩
                   simp at hr
                   exact congrArg Var.mk hr
-                · simp [encode_form] at *; let h := pairing_0 h; rcases h; contradiction
-                repeat { simp [encode_form] at *; rw [pairing_inj] at h;
-                         rcases h with ⟨hl, hr⟩
-                         symm at hl
-                         let hl := pairing_0 hl
-                         rcases hl
-                         contradiction }
+                · simp [encode_form] at *; rw [pairing_0_iff] at h; rcases h; contradiction
+                · simp [encode_form] at *; rw [pairing_inj] at h;
+                  rcases h with ⟨hl, hr⟩
+                  symm at hl
+                  rw [pairing_0_iff] at hl
+                  rcases hl
+                  contradiction
+                · simp [encode_form] at *; rw [pairing_inj] at h
+                  rcases h with ⟨hl, hr⟩
+                  symm at hl
+                  rw [pairing_0_iff] at hl
+                  rcases hl
+                  contradiction
+                · simp [encode_form] at *; rw [pairing_inj] at h
+                  rcases h with ⟨hl, hr⟩
+                  symm at hl
+                  rw [pairing_0_iff] at hl
+                  rcases hl
+                  contradiction
     | bottom => cases ψ
-                · simp [encode_form] at *; symm at h; let h := pairing_0 h
+                · simp [encode_form] at *; symm at h; rw [pairing_0_iff] at h;
                   rcases h with ⟨_, hr⟩
                   simp at hr
                 · simp [encode_form] at *
-                repeat { simp [encode_form] at *; symm at h; let h := pairing_0 h
-                         let hl := pairing_0 h.left
-                         rcases hl
-                         contradiction }
+                · simp [encode_form] at *; symm at h; rw [pairing_0_iff] at h;
+                  rcases h with ⟨hl, hr⟩
+                  rw [pairing_0_iff] at hl
+                  rcases hl
+                  contradiction
+                · simp [encode_form] at *; symm at h; rw [pairing_0_iff] at h
+                  rcases h with ⟨hl, hr⟩
+                  rw [pairing_0_iff] at hl
+                  rcases hl
+                  contradiction
+                · simp [encode_form] at *; symm at h; rw [pairing_0_iff] at h
+                  rcases h with ⟨hl, hr⟩
+                  rw [pairing_0_iff] at hl
+                  rcases hl
+                  contradiction
     | and a b ih1 ih2 => cases ψ
                          · simp [encode_form] at *; rw [pairing_inj] at h
-                           let hl := pairing_0 h.left
+                           rcases h with ⟨hl, hr⟩
+                           rw [pairing_0_iff] at hl
                            rcases hl
                            contradiction
                          · simp [encode_form] at *
-                           let h := pairing_0 h
-                           let hl := pairing_0 h.left
+                           rw [pairing_0_iff] at h
+                           rcases h with ⟨hl, hr⟩
+                           rw [pairing_0_iff] at hl
                            rcases hl
                            contradiction
                          · simp [encode_form] at *
@@ -303,20 +329,28 @@ theorem inject_Form : encode_form.Injective :=
                              rcases h with ⟨hl, hr⟩
                              rw [pairing_inj] at hl
                              apply ih2 hr
-                         repeat { simp [encode_form] at *
-                                  rw [pairing_inj] at h
-                                  rcases h with ⟨hl, hr⟩
-                                  rw [pairing_inj] at hl
-                                  rcases hl
-                                  contradiction }
+                         · simp [encode_form] at *
+                           rw [pairing_inj] at h
+                           rcases h with ⟨hl, hr⟩
+                           rw [pairing_inj] at hl
+                           rcases hl
+                           contradiction
+                         · simp [encode_form] at *
+                           rw [pairing_inj] at h
+                           rcases h with ⟨hl, hr⟩
+                           rw [pairing_inj] at hl
+                           rcases hl
+                           contradiction
     | or a b ih1 ih2 => cases ψ
                         · simp [encode_form] at *; rw [pairing_inj] at h
-                          let hl := pairing_0 h.left
+                          rcases h with ⟨hl, hr⟩
+                          rw [pairing_0_iff] at hl
                           rcases hl
                           contradiction
                         · simp [encode_form] at *
-                          let h := pairing_0 h
-                          let hl := pairing_0 h.left
+                          rw [pairing_0_iff] at h
+                          rcases h with ⟨hl, hr⟩
+                          rw [pairing_0_iff] at hl
                           rcases hl
                           contradiction
                         · simp [encode_form] at *
@@ -343,20 +377,28 @@ theorem inject_Form : encode_form.Injective :=
                           contradiction
     | implication a b ih1 ih2 => cases ψ
                                  · simp [encode_form] at *; rw [pairing_inj] at h
-                                   let hl := pairing_0 h.left
+                                   rcases h with ⟨hl, hr⟩
+                                   rw [pairing_0_iff] at hl
                                    rcases hl
                                    contradiction
                                  · simp [encode_form] at *
-                                   let h := pairing_0 h
-                                   let hl := pairing_0 h.left
+                                   rw [pairing_0_iff] at h
+                                   rcases h with ⟨hl, hr⟩
+                                   rw [pairing_0_iff] at hl
                                    rcases hl
                                    contradiction
-                                 repeat { simp [encode_form] at *
-                                          rw [pairing_inj] at h
-                                          rcases h with ⟨hl, hr⟩
-                                          rw [pairing_inj] at hl
-                                          rcases hl
-                                          contradiction }
+                                 · simp [encode_form] at *
+                                   rw [pairing_inj] at h
+                                   rcases h with ⟨hl, hr⟩
+                                   rw [pairing_inj] at hl
+                                   rcases hl
+                                   contradiction
+                                 · simp [encode_form] at *
+                                   rw [pairing_inj] at h
+                                   rcases h with ⟨hl, hr⟩
+                                   rw [pairing_inj] at hl
+                                   rcases hl
+                                   contradiction
                                  · simp [encode_form] at *
                                    apply And.intro
                                    · rw [pairing_inj] at h

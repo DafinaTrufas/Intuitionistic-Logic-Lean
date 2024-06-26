@@ -1,77 +1,21 @@
 import IL.HeytingAlgebraUtils
 import IL.Formula
 import IL.Semantics
-import IL.Soundness
-import IL.Completeness
 
-variable {α : Type} [HeytingAlgebra α]
+variable {α : Type u} [HeytingAlgebra α]
 
-def AlgInterpretation (I : Var → α) : Formula → α
+def AlgInterpretation {α : Type} [HeytingAlgebra α] (I : Var -> α) : Formula -> α
 | Formula.var p => I p
 | Formula.bottom => ⊥
 | ϕ ∧∧ ψ => AlgInterpretation I ϕ ⊓ AlgInterpretation I ψ
 | ϕ ∨∨ ψ => AlgInterpretation I ϕ ⊔ AlgInterpretation I ψ
 | ϕ ⇒ ψ => AlgInterpretation I ϕ ⇨ AlgInterpretation I ψ
 
-lemma alg_compl (I : Var → α) : AlgInterpretation I (Formula.negation ϕ) = (AlgInterpretation I ϕ)ᶜ :=
-  by
-    unfold Formula.negation
-    have Haux : AlgInterpretation I (ϕ⇒⊥) = AlgInterpretation I ϕ ⇨ AlgInterpretation I ⊥ := by rfl
-    rw [Haux]
-    have Haux : AlgInterpretation I ⊥ = Bot.bot := by rfl
-    rw [Haux]
-    simp
-
-lemma alg_top (I : Var → α) : AlgInterpretation I Formula.top = Top.top :=
-  by
-    have Haux : AlgInterpretation I ⊤ = AlgInterpretation I ⊥ ⇨ AlgInterpretation I ⊥ := by rfl
-    rw [Haux]
-    have Haux : AlgInterpretation I ⊥ = Bot.bot := by rfl
-    rw [Haux]
-    simp
-
-def true_in_alg_model (I : Var → α) (ϕ : Formula) : Prop := AlgInterpretation I ϕ = Top.top
-
-def valid_in_alg (ϕ : Formula) : Prop := ∀ (I : Var → α), true_in_alg_model I ϕ
-
-def alg_valid (ϕ : Formula) : Prop := ∀ (α : Type) [HeytingAlgebra α], @valid_in_alg α _ ϕ
-
-def set_true_in_alg_model (I : Var → α) (Γ : Set Formula) : Prop :=
-  ∀ (ϕ : Formula), ϕ ∈ Γ → true_in_alg_model I ϕ
-
-def set_valid_in_alg (Γ : Set Formula) : Prop := ∀ (I : Var → α), set_true_in_alg_model I Γ
-
-def set_alg_valid (Γ : Set Formula) : Prop :=
-  ∀ (α : Type) [HeytingAlgebra α], @set_valid_in_alg α _ Γ
-
-def alg_sem_conseq (Γ : Set Formula) (ϕ : Formula) : Prop :=
-  ∀ (α : Type) [HeytingAlgebra α] (I : Var → α),
-  set_true_in_alg_model I Γ → true_in_alg_model I ϕ
-infix:50 " ⊨ₐ " => alg_sem_conseq
-
-lemma empty_conseq_alg_valid (ϕ : Formula) :
-  ∅ ⊨ₐ ϕ ↔ alg_valid ϕ :=
-  by
-    apply Iff.intro
-    · intro Hconseq α _ I
-      simp only [alg_sem_conseq, set_true_in_alg_model] at Hconseq
-      simp at Hconseq
-      exact Hconseq α I
-    · intro Halgvalid α _ I _
-      exact Halgvalid α I
-
-lemma elem_alg_sem_conseq (Γ : Set Formula) (ϕ : Formula) : ϕ ∈ Γ → Γ ⊨ₐ ϕ :=
-  by
-    intro Hin α _ _ Hsettrue
-    exact Hsettrue ϕ Hin
-
-lemma alg_valid_sem_conseq (Γ : Set Formula) (ϕ : Formula) : alg_valid ϕ → Γ ⊨ₐ ϕ :=
-  by
-    intro Halgvalid α _ I _
-    exact Halgvalid α I
+def alg_univ_true (ϕ : Formula) : Prop :=
+  forall (α : Type) [HeytingAlgebra α] (I : Var -> α), AlgInterpretation I ϕ = ⊤
 
 def closed {W : Type} (M : KripkeModel W) (A : Set W) : Prop :=
-  ∀ (w w' : W), w ∈ A → M.R w w' → w' ∈ A
+  ∀ (w w' : W), w ∈ A -> M.R w w' -> w' ∈ A
 
 def all_closed {W : Type} (M : KripkeModel W) := {A // @closed W M A}
 
@@ -82,7 +26,7 @@ def himp_closed {W : Type} {M : KripkeModel W} (A B : all_closed M) :=
   Set.sUnion (@all_closed_subset W M A B)
 
 lemma himp_closed_prop {W : Type} {M : KripkeModel W} (A B X : all_closed M) :
-  X.1 ⊆ himp_closed A B ↔ X.1 ∩ A.1 ⊆ B.1 :=
+  X.1 ⊆ himp_closed A B <-> X.1 ∩ A.1 ⊆ B.1 :=
   by
     apply Iff.intro
     · intro Hsubset
@@ -154,7 +98,7 @@ lemma himp_is_closed {W : Type} {M : KripkeModel W} (A B : all_closed M) :
       assumption'
 
 lemma antisymm'' {W : Type} {M : KripkeModel W} (A B : all_closed M) :
-  A.1 ⊆ B.1 → B.1 ⊆ A.1 → A.1 = B.1 :=
+  A.1 ⊆ B.1 -> B.1 ⊆ A.1 -> A.1 = B.1 :=
   by
     intro HAB HBA
     apply Set.Subset.antisymm HAB HBA
@@ -201,7 +145,7 @@ lemma h_interpretation {W : Type} {M : KripkeModel W} :
                                           apply Iff.intro
                                           · intro Hxin; assumption
                                           · intro Hxin; assumption
-    | implication ψ χ ih1 ih2 => have Haux : ∀ (A : all_closed M), A.1 ⊆ (@h W M (ψ ⇒ χ)).1 ↔
+    | implication ψ χ ih1 ih2 => have Haux : ∀ (A : all_closed M), A.1 ⊆ (@h W M (ψ ⇒ χ)).1 <->
                                                 A.1 ∩ (@h W M ψ).1 ⊆ (@h W M χ).1 :=
                                   by
                                     intro A
@@ -232,78 +176,49 @@ lemma h_interpretation {W : Type} {M : KripkeModel W} :
                                       assumption
                                  unfold AlgInterpretation
                                  rw [<-ih1, <-ih2, Subtype.ext_iff]
-                                 have Haux' : ∀ (A : all_closed M), A.1 ⊆ (@h W M (ψ ⇒ χ)).1 ↔
+                                 have Haux' : ∀ (A : all_closed M), A.1 ⊆ (@h W M (ψ ⇒ χ)).1 <->
                                                  A.1 ⊆ himp_closed (@h W M ψ) (@h W M χ) :=
                                   by
                                     intro A
                                     let Haux := Haux A
                                     rw [Haux]
                                     rw [<-himp_closed_prop]
-                                 rw [Set.ext_iff]
-                                 intro w
-                                 apply Iff.intro
-                                 · intro Hwin
-                                   exists (@h W M (ψ⇒χ)).1
-                                   apply And.intro
-                                   · apply And.intro
-                                     · exact (@h W M (ψ⇒χ)).2
-                                     · let Haux' := Haux' (@h W M (ψ⇒χ))
-                                       unfold himp_closed at Haux'
-                                       rcases Haux' with ⟨hl, _⟩
-                                       let Haux' := hl Set.Subset.rfl
-                                       apply Set.Subset.trans Haux'
-                                       rw [Set.sUnion_subset_iff]
-                                       intro t Htin
-                                       exact Htin.right
-                                   · assumption
-                                 · intro Hwin
-                                   rcases Hwin with ⟨t, ⟨⟨Hwint, Htclosed⟩, Htsubset⟩⟩
-                                   let Haux' := Haux' {val := t, property := Hwint}
-                                   have Haux'' : t ⊆ @himp_closed W M (h ψ) (h χ) :=
-                                    by
-                                      apply Set.subset_sUnion_of_mem
-                                      apply And.intro
-                                      assumption'
-                                   rw [<-Haux'] at Haux''
-                                   apply Set.mem_of_subset_of_mem Haux'' Htsubset
+                                 have Haux'' : Set.powerset (@h W M (ψ ⇒ χ)).1 = Set.powerset (himp_closed (@h W M ψ) (@h W M χ)) :=
+                                  by
+                                    unfold Set.powerset
+                                    rw [Set.ext_iff]
+                                    intro X
+                                    simp
+                                    by_cases Hclosed : closed M X
+                                    · exact Haux' {val := X, property := Hclosed}
+                                    · apply Iff.intro
+                                      · sorry
+                                      · sorry
+                                 rw [Set.Subset.antisymm_iff] at Haux''
+                                 rw [Set.powerset_mono, Set.powerset_mono] at Haux''
+                                 rw [Set.Subset.antisymm_iff]
+                                 assumption
 
-lemma kripke_alg {W : Type} {M : KripkeModel W} (ϕ : Formula) :
-  valid_in_model M ϕ ↔ @true_in_alg_model (all_closed M) _ h_var ϕ :=
-  by
-    apply Iff.intro
-    · intro Hvalid
-      unfold true_in_alg_model
-      rw [<-h_interpretation]
-      simp only [Top.top]
-      rw [Subtype.ext_iff, Set.ext_iff]
-      simp
-      assumption
-    · intro Htruealg
-      unfold true_in_alg_model at Htruealg
-      rw [<-h_interpretation] at Htruealg
-      simp only [Top.top] at Htruealg
-      rw [Subtype.ext_iff, Set.ext_iff] at Htruealg
-      simp at Htruealg
-      assumption
+def prime_filters_closed {W : Type} {M : KripkeModel W} := {F | @prime_filter (all_closed M) _ F}
 
-def prime_filters_frame (I : Var → α) :
-  KripkeModel (@prime_filters α _) :=
+def prime_filters_model {W : Type} {M : KripkeModel W} :
+  KripkeModel (@prime_filters_closed W M) :=
   {
-   R := λ (F1 F2) => F1.1 ⊆ F2.1
-   V := λ (v F) => I v ∈ F.1
+   R := λ (F1 F2) => F1.1 ⊆ F2.1,
+   V := λ (v F) => h (Formula.var v) ∈ F.1,
    refl := λ (F) => Set.Subset.rfl
    trans := λ (F1 F2 Φ) => Set.Subset.trans
    monotonicity := λ (v F1 F2) => by intros; apply Set.mem_of_mem_of_subset; assumption'
   }
 
-def Vh_var (v : Var) (F : @prime_filters α _) (I : Var → α) : Prop :=
-  I v ∈ F.1
+def Vh_var {W : Type} {M : KripkeModel W} (v : Var) (F : @prime_filters_closed W M) : Prop :=
+  h (Formula.var v) ∈ F.1
 
-def Vh (ϕ : Formula) (F : @prime_filters α _) (I : Var → α) : Prop :=
-  AlgInterpretation I ϕ ∈ F.1
+def Vh {W : Type} {M : KripkeModel W} (ϕ : Formula) (F : @prime_filters_closed W M) : Prop :=
+  h ϕ ∈ F.1
 
-lemma Vh_valuation (I : Var → α) :
-  ∀ (ϕ : Formula) (F : @prime_filters α _), Vh ϕ F I = val (prime_filters_frame I) F ϕ :=
+lemma Vh_valuation :
+  ∀ (ϕ : Formula) (F : @prime_filters_closed W M), Vh ϕ F = val prime_filters_model F ϕ :=
   by
     intro ϕ
     induction ϕ with
@@ -316,8 +231,8 @@ lemma Vh_valuation (I : Var → α) :
                 assumption
     | and ψ χ ih1 ih2 => intro F
                          unfold Vh
-                         have Hsplit : AlgInterpretation I ψ ⊓ AlgInterpretation I χ ∈ F.1 ↔
-                                       AlgInterpretation I ψ ∈ F.1 ∧ AlgInterpretation I χ ∈ F.1 :=
+                         have Hsplit : AlgInterpretation h_var ψ ⊓ AlgInterpretation h_var χ ∈ F.1 <->
+                                       AlgInterpretation h_var ψ ∈ F.1 ∧ AlgInterpretation h_var χ ∈ F.1 :=
                           by
                             apply Iff.intro
                             · intro Hglb
@@ -327,13 +242,16 @@ lemma Vh_valuation (I : Var → α) :
                          unfold val
                          unfold Vh at ih1
                          unfold Vh at ih2
+                         rw [h_interpretation]
+                         rw [h_interpretation] at ih1
+                         rw [h_interpretation] at ih2
                          rw [<-ih1, <-ih2]
                          simp
                          assumption
     | or ψ χ ih1 ih2 => intro F
                         unfold Vh
-                        have Hsplit : AlgInterpretation I ψ ⊔ AlgInterpretation I χ ∈ F.1 ↔
-                                      AlgInterpretation I ψ ∈ F.1 ∨ AlgInterpretation I χ ∈ F.1 :=
+                        have Hsplit : AlgInterpretation h_var ψ ⊔ AlgInterpretation h_var χ ∈ F.1 <->
+                                      AlgInterpretation h_var ψ ∈ F.1 ∨ AlgInterpretation h_var χ ∈ F.1 :=
                           by
                             apply Iff.intro
                             · intro Hlub
@@ -345,6 +263,9 @@ lemma Vh_valuation (I : Var → α) :
                         unfold val
                         unfold Vh at ih1
                         unfold Vh at ih2
+                        rw [h_interpretation]
+                        rw [h_interpretation] at ih1
+                        rw [h_interpretation] at ih2
                         rw [<-ih1, <-ih2]
                         simp
                         assumption
@@ -357,98 +278,171 @@ lemma Vh_valuation (I : Var → α) :
                                    rw [<-ih1] at Hvalpsi
                                    unfold Vh at Hvalpsi
                                    let HF'filter := F'.2.1.1
-                                   rw [@filter_dedsyst_equiv α _ (@AlgInterpretation α _ I ψ) (@AlgInterpretation α _ I ψ)] at HF'filter
-                                   have Hvh : AlgInterpretation I ψ ⇨ AlgInterpretation I χ ∈ F'.1 :=
+                                   rw [filter_dedsyst_equiv] at HF'filter
+                                   let Hvh : AlgInterpretation h_var ψ ⇨ AlgInterpretation h_var χ ∈ F'.1 :=
                                     by
                                       apply Set.mem_of_subset_of_mem Hr
+                                      rw [h_interpretation] at Hvh
                                       assumption
-                                   let Haux := HF'filter.2 (AlgInterpretation I ψ) (AlgInterpretation I χ) Hvalpsi Hvh
-                                   rw [<-ih2]
-                                   assumption
+                                   rw [h_interpretation] at Hvalpsi
+                                   let Haux := HF'filter.2 (AlgInterpretation h_var ψ) (AlgInterpretation h_var χ) Hvalpsi Hvh
+                                   · have Haux : Vh χ F' :=
+                                      by
+                                        unfold Vh
+                                        rw [<-h_interpretation] at Haux
+                                        assumption
+                                     rw [ih2] at Haux
+                                     assumption
+                                   · exists (@h W M ψ).1; exact (@h W M ψ).2
+                                   · exists (@h W M ψ).1; exact (@h W M ψ).2
                                  · intro Hval
                                    unfold val at Hval
-                                   by_cases Hvh : Vh (ψ ⇒ χ) F I
+                                   by_cases Hvh : Vh (ψ ⇒ χ) F
                                    · assumption
                                    · exfalso
                                      unfold Vh at Hvh
-                                     have Hnotin : AlgInterpretation I χ ∉ X_gen_filter (F.1 ∪ {AlgInterpretation I ψ}) :=
+                                     have Hnotin : AlgInterpretation h_var χ ∉ X_gen_filter (F.1 ∪ {h ψ}) :=
                                       by
                                         apply himp_not_mem
+                                        · exists (@h W M ψ).1; exact (@h W M ψ).2
                                         · exact F.2.1.1
-                                        · unfold AlgInterpretation at Hvh
+                                        · rw [h_interpretation]
+                                          rw [h_interpretation] at Hvh
+                                          unfold AlgInterpretation at Hvh
                                           assumption
-                                     have Hnempty : Set.Nonempty (F.1 ∪ {AlgInterpretation I ψ}) :=
+                                     unfold X_gen_filter at Hnotin
+                                     have Hnotin : AlgInterpretation h_var χ ∉ F.1 ∪ {h ψ} :=
                                       by
-                                        rw [Set.union_comm, Set.singleton_union]
-                                        apply Set.insert_nonempty
-                                     let Haux := @super_prime_filter α _ (AlgInterpretation I χ) (X_gen_filter (F.1 ∪ {AlgInterpretation I ψ}))
-                                                  (X_gen_filter_filter ((F.1 ∪ {AlgInterpretation I ψ})) Hnempty) Hnotin
-                                     rcases Haux with ⟨P, ⟨Hprime, ⟨Hsubset, Hchinotin⟩⟩⟩
-                                     have Hsubset' : F.1 ⊆ P :=
+                                        let Hsubset := X_subset_X_gen_filter (F.1 ∪ {h ψ})
+                                        apply Set.not_mem_subset
+                                        assumption'
+                                     let Haux := @super_prime_filter (all_closed M) _ (h χ) (F ∪ {h ψ})
+                                     have Hins_filter : filter (F.1 ∪ {h ψ}) :=
                                       by
-                                        apply Set.Subset.trans (Set.subset_union_left F.1 {AlgInterpretation I ψ})
-                                        apply Set.Subset.trans (X_subset_X_gen_filter (F.1 ∪ {AlgInterpretation I ψ})) Hsubset
+                                        sorry
+                                     have Hnotin : AlgInterpretation h_var χ ∉ F.1 :=
+                                      by
+                                        apply Set.not_mem_subset
+                                        assumption'
+                                        apply Set.subset_union_left
+                                     rw [<-h_interpretation] at Hnotin
+                                     let Haux := @super_prime_filter (all_closed M) _ (h χ) F F.2.1.1 Hnotin
+                                     rcases Haux with ⟨F', ⟨Hprime, ⟨Hsubset, Hnotval_chi⟩⟩⟩
                                      simp at Hval
-                                     let Hval := Hval P Hprime Hsubset'
-                                     rw [<-ih1, <-ih2] at Hval
-                                     apply Hchinotin
-                                     apply Hval
-                                     have Hpsiin : AlgInterpretation I ψ ∈ X_gen_filter (F.1 ∪ {AlgInterpretation I ψ}) :=
-                                      by
-                                        unfold X_gen_filter
-                                        simp
-                                        intro F'' _ Hsubset''
-                                        rw [Set.insert_subset_iff] at Hsubset''
-                                        exact Hsubset''.left
-                                     apply Set.mem_of_subset_of_mem Hsubset Hpsiin
+                                     unfold KripkeModel.R at Hval
+                                     let Haux := Hval F' Hprime Hsubset
+                                     sorry
 
-lemma alg_kripke (I : Var → α) (ϕ : Formula) :
-  true_in_alg_model I ϕ ↔ valid_in_model (prime_filters_frame I) ϕ :=
+theorem soundness_alg (ϕ : Formula) : Nonempty (∅ ⊢ ϕ) -> alg_univ_true ϕ :=
   by
-    apply Iff.intro
-    · intro Htruealg
-      intro Hprime
-      rcases Hprime with ⟨F, ⟨⟨Hfilter, _⟩, _⟩⟩
-      rw [<-Vh_valuation]
-      unfold Vh
-      rw [Htruealg]
-      exact @top_mem_filter α _ F Hfilter
-    · intro Hvalid
-      have Haux : (∀ (w : ↑prime_filters), val (prime_filters_frame I) w ϕ) →
-                  (∀ (w : ↑prime_filters), Vh ϕ w I) :=
-      by
-        intro _ _
-        rw [Vh_valuation]
-        apply Hvalid
-      let Hvalid := Haux Hvalid
-      unfold Vh at Hvalid
-      simp at Hvalid
-      rw [<-Set.mem_sInter, super_prime_filter_cor2] at Hvalid
-      assumption
+    intro Htheorem
+    let Htheorem' := Classical.choice Htheorem
+    induction Htheorem' with
+    | premise Hin => simp at Hin
+    | @contractionDisj ψ => intro α H I
+                            unfold AlgInterpretation
+                            have Haux : AlgInterpretation I (ψ ∨∨ ψ) = AlgInterpretation I ψ ⊔ AlgInterpretation I ψ := by rfl
+                            rw [Haux]
+                            simp
+    | @contractionConj ψ => intro α H I
+                            unfold AlgInterpretation
+                            have Haux : AlgInterpretation I (ψ ∧∧ ψ) = AlgInterpretation I ψ ⊓ AlgInterpretation I ψ := by rfl
+                            rw [Haux]
+                            simp
+    | @weakeningDisj ψ χ => intro α H I
+                            unfold AlgInterpretation
+                            have Haux : AlgInterpretation I (ψ ∨∨ χ) = AlgInterpretation I ψ ⊔ AlgInterpretation I χ := by rfl
+                            rw [Haux]
+                            simp
+    | @weakeningConj ψ χ => intro α H I
+                            unfold AlgInterpretation
+                            have Haux : AlgInterpretation I (ψ ∧∧ χ) = AlgInterpretation I ψ ⊓ AlgInterpretation I χ := by rfl
+                            rw [Haux]
+                            simp
+    | @permutationDisj ψ χ => intro α H I
+                              unfold AlgInterpretation
+                              have Haux : AlgInterpretation I (ψ ∨∨ χ) = AlgInterpretation I ψ ⊔ AlgInterpretation I χ := by rfl
+                              rw [Haux]
+                              have Haux : AlgInterpretation I (χ ∨∨ ψ) = AlgInterpretation I χ ⊔ AlgInterpretation I ψ := by rfl
+                              rw [Haux]
+                              simp
+    | @permutationConj ψ χ => intro α H I
+                              unfold AlgInterpretation
+                              have Haux : AlgInterpretation I (ψ ∧∧ χ) = AlgInterpretation I ψ ⊓ AlgInterpretation I χ := by rfl
+                              rw [Haux]
+                              have Haux : AlgInterpretation I (χ ∧∧ ψ) = AlgInterpretation I χ ⊓ AlgInterpretation I ψ := by rfl
+                              rw [Haux]
+                              simp
+    | @exfalso ψ => intro α H I
+                    unfold AlgInterpretation
+                    have Haux : AlgInterpretation I ⊥ = Bot.bot := by rfl
+                    rw [Haux]
+                    simp
+    | @modusPonens ψ χ p1 p2 ih1 ih2 => intro α H I
+                                        simp at ih1; simp at ih2
+                                        let ih2 := ih2 p2 α I
+                                        unfold AlgInterpretation at ih2
+                                        let ih1 := ih1 p1 α I
+                                        rw [ih1] at ih2
+                                        simp at ih2
+                                        assumption
+    | @syllogism ψ χ γ p1 p2 ih1 ih2 => intro α H I
+                                        simp at ih1; simp at ih2
+                                        let ih1 := ih1 p1 α I
+                                        unfold AlgInterpretation at ih1
+                                        let ih2 := ih2 p2 α I
+                                        unfold AlgInterpretation at ih2
+                                        simp at ih1; simp at ih2
+                                        unfold AlgInterpretation
+                                        simp
+                                        apply le_trans
+                                        assumption'
+    | @exportation ψ χ γ p ih => intro α H I
+                                 simp at ih
+                                 let ih := ih p α I
+                                 unfold AlgInterpretation at ih
+                                 have Haux : AlgInterpretation I (ψ ∧∧ χ) = AlgInterpretation I ψ ⊓ AlgInterpretation I χ := by rfl
+                                 rw [Haux] at ih
+                                 simp at ih
+                                 rw [<-le_himp_iff, <-himp_eq_top_iff] at ih
+                                 unfold AlgInterpretation
+                                 have Haux : AlgInterpretation I (χ ⇒ γ) = AlgInterpretation I χ ⇨ AlgInterpretation I γ := by rfl
+                                 rw [Haux]
+                                 assumption
+    | @importation ψ χ γ p ih => intro α H I
+                                 simp at ih
+                                 let ih := ih p α I
+                                 unfold AlgInterpretation at ih
+                                 simp at ih
+                                 have Haux : AlgInterpretation I (χ ⇒ γ) = AlgInterpretation I χ ⇨ AlgInterpretation I γ := by rfl
+                                 rw [Haux, le_himp_iff, <-himp_eq_top_iff] at ih
+                                 unfold AlgInterpretation
+                                 have Haux : AlgInterpretation I (ψ ∧∧ χ) = AlgInterpretation I ψ ⊓ AlgInterpretation I χ := by rfl
+                                 rw [Haux]
+                                 assumption
+    | @expansion ψ χ γ p ih => intro α H I
+                               simp at ih
+                               let ih := ih p α I
+                               unfold AlgInterpretation at ih
+                               simp at ih
+                               let ih := sup_le_sup_left ih (AlgInterpretation I γ)
+                               have Haux : AlgInterpretation I γ ⊔ AlgInterpretation I ψ = AlgInterpretation I (γ ∨∨ ψ) := by rfl
+                               rw [Haux] at ih
+                               have Haux : AlgInterpretation I γ ⊔ AlgInterpretation I χ = AlgInterpretation I (γ ∨∨ χ) := by rfl
+                               rw [Haux] at ih
+                               unfold AlgInterpretation
+                               simp
+                               assumption
 
-variable {Γ : Set Formula}
-
-def equiv (ϕ ψ : Formula) := Nonempty (Γ ⊢ ϕ ⇔ ψ)
+def equiv (ϕ ψ : Formula) := Nonempty (∅ ⊢ ϕ ⇒ ψ) /\ Nonempty (∅ ⊢ ψ ⇒ ϕ)
 infix:50 "∼" => equiv
 
-lemma equiv_and (ϕ ψ : Formula) : @equiv Γ ϕ ψ ↔ Nonempty (Γ ⊢ ϕ ⇒ ψ) ∧ Nonempty (Γ ⊢ ψ ⇒ ϕ) :=
-  by
-    unfold equiv
-    apply Iff.intro
-    · intro Hequiv
-      unfold Formula.equivalence at Hequiv
-      apply Proof.conjIntroRule' (Classical.choice Hequiv)
-    · intro Hand
-      apply Nonempty.intro
-      apply Proof.conjIntroRule (Classical.choice Hand.left) (Classical.choice Hand.right)
-
-@[simp]
 instance setoid_formula : Setoid Formula :=
-  { r := @equiv Γ,
-    iseqv := ⟨λ _ => by rw [equiv_and]; exact And.intro (Nonempty.intro Proof.implSelf) (Nonempty.intro Proof.implSelf),
-              λ H12 => by rw [equiv_and, And.comm]; rw [equiv_and] at H12; assumption,
+  { r := equiv,
+    iseqv := ⟨λ _ => And.intro (Nonempty.intro Proof.implSelf) (Nonempty.intro Proof.implSelf),
+              λ _ => by unfold equiv; rw [And.comm]; assumption,
               λ H12 H23 => by
-                              rw [equiv_and]; rw [equiv_and] at H12; rw [equiv_and] at H23
+                              unfold equiv; unfold equiv at H12; unfold equiv at H23;
                               apply And.intro
                               · apply Nonempty.intro
                                 exact Proof.syllogism (Classical.choice H12.left) (Classical.choice H23.left)
@@ -456,89 +450,79 @@ instance setoid_formula : Setoid Formula :=
                                 exact Proof.syllogism (Classical.choice H23.right) (Classical.choice H12.right)
                               ⟩ }
 
-def Formula.le (ϕ ψ : Formula) : Prop := Nonempty (Γ ⊢ ϕ ⇒ ψ)
+def Formula.le (ϕ ψ : Formula) : Prop := Nonempty (∅ ⊢ ϕ ⇒ ψ)
 
-lemma le_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : @equiv Γ ϕ ϕ' → @equiv Γ ψ ψ' → (@Formula.le Γ ϕ ψ = @Formula.le Γ ϕ' ψ') :=
+lemma le_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : ϕ ∼ ϕ' -> ψ ∼ ψ' -> (Formula.le ϕ ψ = Formula.le ϕ' ψ') :=
   by
     intro Heqvp Heqpsi
     simp
     apply Iff.intro
     · intro Hvppsi
       apply Nonempty.intro
-      rw [equiv_and] at Heqvp; rw [equiv_and] at Heqpsi
       exact Proof.syllogism (Proof.syllogism (Classical.choice Heqvp.right) (Classical.choice Hvppsi))
                             (Classical.choice Heqpsi.left)
     · intro Hvp'psi'
       apply Nonempty.intro
-      rw [equiv_and] at Heqvp; rw [equiv_and] at Heqpsi
       exact Proof.syllogism (Proof.syllogism (Classical.choice Heqvp.left) (Classical.choice Hvp'psi'))
                             (Classical.choice Heqpsi.right)
 
-def le_quot (ϕ ψ : Quotient (@setoid_formula Γ)) : Prop :=
-  Quotient.lift₂ (s₁ := @setoid_formula Γ) (s₂ := @setoid_formula Γ) Formula.le le_preserves_equiv ϕ ψ
+def le_quot (ϕ ψ : Quotient setoid_formula) : Prop :=
+  Quotient.lift₂ Formula.le le_preserves_equiv ϕ ψ
 infix:50 "≤" => le_quot
 
-def Formula.or_quot (ϕ ψ : Formula) := Quotient.mk (@setoid_formula Γ) (ϕ ∨∨ ψ)
+def Formula.or_quot (ϕ ψ : Formula) := Quotient.mk setoid_formula (ϕ ∨∨ ψ)
 
-lemma or_quot_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : @equiv Γ ϕ ϕ' → @equiv Γ ψ ψ' →
-  (@Formula.or_quot Γ ϕ ψ = @Formula.or_quot Γ ϕ' ψ') :=
+lemma or_quot_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : ϕ ∼ ϕ' -> ψ ∼ ψ' ->
+  (Formula.or_quot ϕ ψ = Formula.or_quot ϕ' ψ') :=
   by
     intro Heqvp Heqpsi
-    apply Quotient.sound
-    rw [equiv_and] at Heqvp
-    rw [equiv_and] at Heqpsi
-    simp [HasEquiv.Equiv, Setoid.r]
-    rw [equiv_and]
+    unfold Formula.or_quot
+    simp
     apply And.intro
     · apply Nonempty.intro
       exact Proof.orImplDistrib (Classical.choice Heqvp.left) (Classical.choice Heqpsi.left)
     · apply Nonempty.intro
       exact Proof.orImplDistrib (Classical.choice Heqvp.right) (Classical.choice Heqpsi.right)
 
-def or_quot (ϕ ψ : Quotient (@setoid_formula Γ)) : Quotient (@setoid_formula Γ) :=
-  Quotient.lift₂ (s₁ := @setoid_formula Γ) (s₂ := @setoid_formula Γ) Formula.or_quot or_quot_preserves_equiv ϕ ψ
+def or_quot (ϕ ψ : Quotient setoid_formula) : Quotient setoid_formula :=
+  Quotient.lift₂ Formula.or_quot or_quot_preserves_equiv ϕ ψ
 
-def Formula.and_quot (ϕ ψ : Formula) := Quotient.mk (@setoid_formula Γ) (ϕ ∧∧ ψ)
+def Formula.and_quot (ϕ ψ : Formula) := Quotient.mk setoid_formula (ϕ ∧∧ ψ)
 
-lemma and_quot_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : @equiv Γ ϕ ϕ' → @equiv Γ ψ ψ' →
-  (@Formula.and_quot Γ ϕ ψ = @Formula.and_quot Γ ϕ' ψ') :=
+lemma and_quot_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : ϕ ∼ ϕ' -> ψ ∼ ψ' ->
+  (Formula.and_quot ϕ ψ = Formula.and_quot ϕ' ψ') :=
   by
     intro Heqvp Heqpsi
-    apply Quotient.sound
-    rw [equiv_and] at Heqvp
-    rw [equiv_and] at Heqpsi
-    simp [HasEquiv.Equiv, Setoid.r]
-    rw [equiv_and]
+    unfold Formula.and_quot
+    simp
     apply And.intro
     · apply Nonempty.intro
       exact Proof.andImplDistrib (Classical.choice Heqvp.left) (Classical.choice Heqpsi.left)
     · apply Nonempty.intro
       exact Proof.andImplDistrib (Classical.choice Heqvp.right) (Classical.choice Heqpsi.right)
 
-def and_quot (ϕ ψ : Quotient (@setoid_formula Γ)) : Quotient (@setoid_formula Γ) :=
-  Quotient.lift₂ (s₁ := @setoid_formula Γ) (s₂ := @setoid_formula Γ) Formula.and_quot and_quot_preserves_equiv ϕ ψ
+def and_quot (ϕ ψ : Quotient setoid_formula) : Quotient setoid_formula :=
+  Quotient.lift₂ Formula.and_quot and_quot_preserves_equiv ϕ ψ
 
-def Formula.to_quot (ϕ ψ : Formula) := Quotient.mk (@setoid_formula Γ) (ϕ ⇒ ψ)
+def Formula.to_quot (ϕ ψ : Formula) := Quotient.mk setoid_formula (ϕ ⇒ ψ)
 
-lemma to_quot_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : @equiv Γ ϕ ϕ' → @equiv Γ ψ  ψ' →
-  (@Formula.to_quot Γ ϕ ψ = @Formula.to_quot Γ ϕ' ψ') :=
+lemma to_quot_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : ϕ ∼ ϕ' -> ψ ∼ ψ' ->
+  (Formula.to_quot ϕ ψ = Formula.to_quot ϕ' ψ') :=
   by
     intro Heqvp Heqpsi
-    apply Quotient.sound
-    rw [equiv_and] at Heqvp
-    rw [equiv_and] at Heqpsi
-    simp [HasEquiv.Equiv, Setoid.r]
-    rw [equiv_and]
+    unfold Formula.to_quot
+    simp
     apply And.intro
     · apply Nonempty.intro
+      unfold equiv at Heqvp
       exact Proof.equivDistrib (Classical.choice Heqvp.right) (Classical.choice Heqpsi.left)
     · apply Nonempty.intro
       exact Proof.equivDistrib (Classical.choice Heqvp.left) (Classical.choice Heqpsi.right)
 
-def to_quot (ϕ ψ : Quotient (@setoid_formula Γ)) : Quotient (@setoid_formula Γ):=
-  Quotient.lift₂ (s₁ := @setoid_formula Γ) (s₂ := @setoid_formula Γ) Formula.to_quot to_quot_preserves_equiv ϕ ψ
+def to_quot (ϕ ψ : Quotient setoid_formula) : Quotient setoid_formula :=
+  Quotient.lift₂ Formula.to_quot to_quot_preserves_equiv ϕ ψ
 
-instance lt_heyting : HeytingAlgebra (Quotient (@setoid_formula Γ)) :=
+instance quotient_formula_heyting : HeytingAlgebra (Quotient setoid_formula) :=
   { sup := or_quot
     le := le_quot
     le_refl := λ q => by
@@ -554,10 +538,8 @@ instance lt_heyting : HeytingAlgebra (Quotient (@setoid_formula Γ)) :=
     le_antisymm := λ q1 q2 H12 H21 => by
                                         induction q1 using Quotient.ind
                                         induction q2 using Quotient.ind
-                                        apply Quotient.sound
-                                        simp [HasEquiv.Equiv, Setoid.r]
-                                        rw [equiv_and]
-                                        apply And.intro H12 H21
+                                        simp
+                                        exact And.intro H12 H21
     le_sup_left := λ q1 q2 => by
                                 induction q1 using Quotient.ind
                                 induction q2 using Quotient.ind
@@ -591,7 +573,7 @@ instance lt_heyting : HeytingAlgebra (Quotient (@setoid_formula Γ)) :=
                                       induction q3 using Quotient.ind
                                       apply Nonempty.intro
                                       exact Proof.conjImplIntroRule (Classical.choice H13) (Classical.choice H23)
-    top := Quotient.mk setoid_formula Formula.top
+    top := Quotient.mk setoid_formula (Formula.negation ((⊥ ⇒ ⊥) ∧∧ (Formula.negation (⊥ ⇒ ⊥))))
     himp := to_quot
     le_himp_iff := λ q1 q2 q3 => by
                                   induction q1 using Quotient.ind
@@ -607,51 +589,51 @@ instance lt_heyting : HeytingAlgebra (Quotient (@setoid_formula Γ)) :=
     le_top := λ q => by
                       induction q using Quotient.ind
                       apply Nonempty.intro
-                      exact Proof.extraPremise Proof.exfalso
-    bot := Quotient.mk setoid_formula Formula.bottom
+                      exact Proof.extraPremise Proof.exFalsoAnd
+    bot := Quotient.mk setoid_formula ((⊥ ⇒ ⊥) ∧∧ (Formula.negation (⊥ ⇒ ⊥)))
     bot_le := λ q => by
                       induction q using Quotient.ind
                       apply Nonempty.intro
-                      exact Proof.exfalso
-    compl := λ q => to_quot q (Quotient.mk setoid_formula Formula.bottom)
+                      exact Proof.exFalsoAnd
+    compl := λ q => to_quot q (Quotient.mk setoid_formula ((⊥ ⇒ ⊥) ∧∧ (Formula.negation (⊥ ⇒ ⊥))))
     himp_bot := by simp }
 
 lemma equiv_top (ϕ : Formula)  :
-  Nonempty (Γ ⊢ ϕ) ↔ Quotient.mk (@setoid_formula Γ) ϕ = Top.top :=
+  Nonempty (∅ ⊢ ϕ) <-> Quotient.mk setoid_formula ϕ = ⊤ :=
   by
     simp only [Top.top]
+    simp
     apply Iff.intro
     · intro Hnempty
-      apply Quotient.sound
-      simp [HasEquiv.Equiv, Setoid.r]
-      rw [equiv_and]
       apply And.intro
       · apply Nonempty.intro
-        exact Proof.extraPremise Proof.exfalso
+        exact Proof.extraPremise Proof.notConjContradict
       · apply Nonempty.intro
         exact Proof.extraPremise (Classical.choice Hnempty)
     · intro Hequiv
       apply Nonempty.intro
-      let Hequiv := Quotient.exact Hequiv
-      simp [HasEquiv.Equiv, Setoid.r] at Hequiv
-      rw [equiv_and] at Hequiv
       rcases Hequiv with ⟨_, Hr⟩
-      exact Proof.modusPonens Proof.exfalso (Classical.choice Hr)
+      exact Proof.modusPonens Proof.notConjContradict (Classical.choice Hr)
 
-def h_quot_var (v : Var) : Quotient (@setoid_formula Γ) := Quotient.mk setoid_formula (Formula.var v)
+def h_quot_var (v : Var) : Quotient setoid_formula := Quotient.mk setoid_formula (Formula.var v)
 
-def h_quot (ϕ : Formula) : Quotient (@setoid_formula Γ) := Quotient.mk setoid_formula ϕ
+def h_quot (ϕ : Formula) : Quotient setoid_formula := Quotient.mk setoid_formula ϕ
 
 lemma h_quot_interpretation :
-  ∀ (ϕ : Formula),  h_quot ϕ = (@AlgInterpretation (Quotient (@setoid_formula Γ)) _ h_quot_var ϕ) :=
+  ∀ (ϕ : Formula),  h_quot ϕ = (@AlgInterpretation (Quotient setoid_formula) _ h_quot_var ϕ) :=
   by
     intro ϕ
     induction ϕ with
     | var v => rfl
     | bottom => unfold h_quot; unfold AlgInterpretation
-                simp only [Bot.bot]
+                simp only [Bot.bot]; simp
+                apply And.intro
+                · apply Nonempty.intro
+                  exact Proof.exfalso
+                · apply Nonempty.intro
+                  exact Proof.exFalsoAnd
     | and ψ χ ih1 ih2 => unfold h_quot; unfold AlgInterpretation
-                         have Haux : Quotient.mk (@setoid_formula Γ) (ψ∧∧χ) =
+                         have Haux : Quotient.mk setoid_formula (ψ∧∧χ) =
                           and_quot (Quotient.mk setoid_formula ψ) (Quotient.mk setoid_formula χ) :=
                           by rfl
                          rw [Haux]
@@ -660,7 +642,7 @@ lemma h_quot_interpretation :
                          rw [<-ih1, <-ih2]
                          simp only [Inf.inf]
     | or ψ χ ih1 ih2 => unfold h_quot; unfold AlgInterpretation
-                        have Haux : Quotient.mk (@setoid_formula Γ) (ψ∨∨χ) =
+                        have Haux : Quotient.mk setoid_formula (ψ∨∨χ) =
                           or_quot (Quotient.mk setoid_formula ψ) (Quotient.mk setoid_formula χ) :=
                           by rfl
                         rw [Haux]
@@ -669,7 +651,7 @@ lemma h_quot_interpretation :
                         rw [<-ih1, <-ih2]
                         simp only [Sup.sup]
     | implication ψ χ ih1 ih2 => unfold h_quot; unfold AlgInterpretation
-                                 have Haux : Quotient.mk (@setoid_formula Γ) (ψ⇒χ) =
+                                 have Haux : Quotient.mk setoid_formula (ψ⇒χ) =
                                   to_quot (Quotient.mk setoid_formula ψ) (Quotient.mk setoid_formula χ) :=
                                   by rfl
                                  rw [Haux]
@@ -678,154 +660,64 @@ lemma h_quot_interpretation :
                                  rw [<-ih1, <-ih2]
                                  simp only [himp]
 
-lemma set_true_in_lt :
-  @set_true_in_alg_model (Quotient (@setoid_formula Γ)) _ h_quot_var Γ :=
-  by
-    intro ϕ Hin
-    unfold true_in_alg_model
-    rw [<-h_quot_interpretation]
-    unfold h_quot
-    rw [<-equiv_top]
-    apply Nonempty.intro
-    exact Proof.premise Hin
-
-lemma true_in_lt (ϕ : Formula) :
-  @true_in_alg_model (Quotient (@setoid_formula Γ)) _ h_quot_var ϕ ↔ Nonempty (Γ ⊢ ϕ) :=
-  by
-    apply Iff.intro
-    · intro Htruelt
-      apply Nonempty.intro
-      unfold true_in_alg_model at Htruelt
-      rw [<-h_quot_interpretation] at Htruelt
-      unfold h_quot at Htruelt
-      rw [<-equiv_top] at Htruelt
-      exact Classical.choice Htruelt
-    · intro Hnempty
-      rw [equiv_top] at Hnempty
-      unfold true_in_alg_model
-      rw [<-h_quot_interpretation]
-      assumption
-
-theorem soundness_alg (ϕ : Formula) : Nonempty (Γ ⊢ ϕ) → alg_sem_conseq Γ ϕ :=
-  by
-    intro Htheorem
-    let Htheorem' := Classical.choice Htheorem
-    induction Htheorem' with
-    | @premise ϕ Hin => intro _ _ _ Hsettrue
-                        exact Hsettrue ϕ Hin
-    | @contractionDisj ψ => intro _ _ I _
-                            unfold true_in_alg_model; unfold AlgInterpretation
-                            have Haux : AlgInterpretation I (ψ ∨∨ ψ) = AlgInterpretation I ψ ⊔ AlgInterpretation I ψ := by rfl
-                            rw [Haux, himp_eq_top_iff, sup_idem]
-    | @contractionConj ψ => intro _ _ I _
-                            unfold true_in_alg_model; unfold AlgInterpretation
-                            have Haux : AlgInterpretation I (ψ ∧∧ ψ) = AlgInterpretation I ψ ⊓ AlgInterpretation I ψ := by rfl
-                            rw [Haux, himp_eq_top_iff, inf_idem]
-    | @weakeningDisj ψ χ => intro _ _ I _
-                            unfold true_in_alg_model; unfold AlgInterpretation
-                            have Haux : AlgInterpretation I (ψ ∨∨ χ) = AlgInterpretation I ψ ⊔ AlgInterpretation I χ := by rfl
-                            rw [Haux, himp_eq_top_iff]
-                            exact le_sup_left
-    | @weakeningConj ψ χ => intro _ _ I _
-                            unfold true_in_alg_model; unfold AlgInterpretation
-                            have Haux : AlgInterpretation I (ψ ∧∧ χ) = AlgInterpretation I ψ ⊓ AlgInterpretation I χ := by rfl
-                            rw [Haux, himp_eq_top_iff]
-                            exact inf_le_left
-    | @permutationDisj ψ χ => intro _ _ I _
-                              unfold true_in_alg_model; unfold AlgInterpretation
-                              have Haux : AlgInterpretation I (ψ ∨∨ χ) = AlgInterpretation I ψ ⊔ AlgInterpretation I χ := by rfl
-                              rw [Haux]
-                              have Haux : AlgInterpretation I (χ ∨∨ ψ) = AlgInterpretation I χ ⊔ AlgInterpretation I ψ := by rfl
-                              rw [Haux, himp_eq_top_iff, sup_comm]
-    | @permutationConj ψ χ => intro _ _ I _
-                              unfold true_in_alg_model; unfold AlgInterpretation
-                              have Haux : AlgInterpretation I (ψ ∧∧ χ) = AlgInterpretation I ψ ⊓ AlgInterpretation I χ := by rfl
-                              rw [Haux]
-                              have Haux : AlgInterpretation I (χ ∧∧ ψ) = AlgInterpretation I χ ⊓ AlgInterpretation I ψ := by rfl
-                              rw [Haux, himp_eq_top_iff, inf_comm]
-    | @exfalso ψ => intro _ _ I _
-                    unfold true_in_alg_model; unfold AlgInterpretation
-                    have Haux : AlgInterpretation I ⊥ = Bot.bot := by rfl
-                    rw [Haux, himp_eq_top_iff]
-                    exact bot_le
-    | @modusPonens ψ χ p1 p2 ih1 ih2 => intro α _ I Hsettrue
-                                        simp at ih1; simp at ih2
-                                        let ih2 := ih2 p2
-                                        let ih1 := ih1 p1
-                                        have Haux : AlgInterpretation I (ψ ⇒ χ) = AlgInterpretation I ψ ⇨ AlgInterpretation I χ := by rfl
-                                        let ih2 := ih2 α I Hsettrue
-                                        unfold true_in_alg_model at ih2
-                                        rw [Haux, ih1, top_himp] at ih2
-                                        assumption'
-    | @syllogism ψ χ γ p1 p2 ih1 ih2 => intro α _ I Hsettrue
-                                        simp at ih1; simp at ih2
-                                        let ih1 := ih1 p1
-                                        let ih2 := ih2 p2
-                                        have Haux1 : AlgInterpretation I (ψ ⇒ χ) = AlgInterpretation I ψ ⇨ AlgInterpretation I χ := by rfl
-                                        have Haux2 : AlgInterpretation I (χ ⇒ γ) = AlgInterpretation I χ ⇨ AlgInterpretation I γ := by rfl
-                                        let ih1 := ih1 α I Hsettrue; let ih2 := ih2 α I Hsettrue
-                                        unfold true_in_alg_model at ih1; unfold true_in_alg_model at ih2
-                                        rw [Haux1, himp_eq_top_iff] at ih1
-                                        rw [Haux2, himp_eq_top_iff] at ih2
-                                        unfold true_in_alg_model; unfold AlgInterpretation
-                                        rw [himp_eq_top_iff]
-                                        apply le_trans
-                                        assumption'
-    | @exportation ψ χ γ p ih => intro α _ I Hsettrue
-                                 simp at ih
-                                 let ih := ih p
-                                 have Haux : AlgInterpretation I (ψ ∧∧ χ ⇒ γ) = AlgInterpretation I ψ ⊓ AlgInterpretation I χ ⇨ AlgInterpretation I γ := by rfl
-                                 let ih := ih α I Hsettrue
-                                 unfold true_in_alg_model at ih
-                                 rw [Haux] at ih
-                                 rw [himp_eq_top_iff] at ih
-                                 unfold true_in_alg_model; unfold AlgInterpretation
-                                 have Haux : AlgInterpretation I (χ ⇒ γ) = AlgInterpretation I χ ⇨ AlgInterpretation I γ := by rfl
-                                 rw [Haux, himp_eq_top_iff, le_himp_iff]
-                                 assumption
-    | @importation ψ χ γ p ih => intro α _ I Hsettrue
-                                 simp at ih
-                                 let ih := ih p
-                                 have Haux : AlgInterpretation I (ψ ⇒ χ ⇒ γ) = AlgInterpretation I ψ ⇨ AlgInterpretation I χ ⇨ AlgInterpretation I γ := by rfl
-                                 let ih := ih α I Hsettrue
-                                 unfold true_in_alg_model at ih
-                                 rw [Haux, himp_eq_top_iff] at ih
-                                 unfold true_in_alg_model; unfold AlgInterpretation
-                                 have Haux : AlgInterpretation I (ψ ∧∧ χ) = AlgInterpretation I ψ ⊓ AlgInterpretation I χ := by rfl
-                                 rw [Haux, himp_eq_top_iff, <-le_himp_iff]
-                                 assumption
-    | @expansion ψ χ γ p ih => intro α _ I Hsettrue
-                               simp at ih
-                               let ih := ih p
-                               have Haux : AlgInterpretation I (ψ ⇒ χ) = AlgInterpretation I ψ ⇨ AlgInterpretation I χ := by rfl
-                               let ih := ih α I Hsettrue
-                               unfold true_in_alg_model at ih
-                               rw [Haux, himp_eq_top_iff] at ih
-                               let ih := sup_le_sup_left ih (AlgInterpretation I γ)
-                               have Haux : AlgInterpretation I γ ⊔ AlgInterpretation I ψ = AlgInterpretation I (γ ∨∨ ψ) := by rfl
-                               rw [Haux] at ih
-                               have Haux : AlgInterpretation I γ ⊔ AlgInterpretation I χ = AlgInterpretation I (γ ∨∨ χ) := by rfl
-                               rw [Haux] at ih
-                               unfold true_in_alg_model; unfold AlgInterpretation
-                               rw [himp_eq_top_iff]
-                               assumption
-
 theorem completeness_alg (ϕ : Formula) :
-  alg_sem_conseq Γ ϕ ↔ Nonempty (Γ ⊢ ϕ) :=
+  alg_univ_true ϕ -> Nonempty (∅ ⊢ ϕ) :=
   by
-    apply Iff.intro
-    · intro Halg
-      rw [<-true_in_lt]
-      exact Halg (Quotient (@setoid_formula Γ)) h_quot_var set_true_in_lt
-    · exact soundness_alg ϕ
+    intro Halg
+    by_cases Hth : Nonempty (∅ ⊢ ϕ)
+    · assumption
+    · exfalso
+      rw [equiv_top] at Hth
+      let Halg := Halg (Quotient setoid_formula) h_quot_var
+      rw [<-h_quot_interpretation] at Halg
+      exact Hth Halg
 
-theorem alg_kripke_valid_equiv (ϕ : Formula) :
-  alg_valid ϕ ↔ valid ϕ :=
+theorem alg_true_kripke (ϕ : Formula) :
+  alg_univ_true ϕ -> valid ϕ :=
   by
-    apply Iff.intro
-    · intro Halg _ _
-      rw [kripke_alg]
-      apply Halg
-    · intro Hvalid _ _ _
-      rw [alg_kripke]
-      apply Hvalid
+    intro Halg
+    by_cases Hv : valid ϕ
+    · assumption
+    · exfalso
+      unfold valid at Hv
+      push_neg at Hv
+      rcases Hv with ⟨W, ⟨M, ⟨w, Hnval⟩⟩⟩
+      let Halg := Halg (all_closed M) h_var
+      rw [<-h_interpretation] at Halg
+      simp only [Top.top] at Halg
+      rw [Subtype.ext_iff] at Halg
+      rw [Set.ext_iff] at Halg
+      simp at Halg
+      exact Hnval (Halg w)
+
+theorem kripke_alg_true (ϕ : Formula) {W : Type} {M : KripkeModel W} :
+  valid ϕ -> alg_univ_true ϕ :=
+  by
+    intro Hvalid
+    by_cases Halg : alg_univ_true ϕ
+    · assumption
+    · exfalso
+      unfold alg_univ_true at Halg
+      push_neg at Halg
+      rcases Halg with ⟨α, ⟨H, ⟨I, Hnint⟩⟩⟩
+      unfold valid at Hvalid
+      let Hvalid := Hvalid (@prime_filters_closed W M) (prime_filters_model)
+      have Hcompl : AlgInterpretation I (Formula.negation ϕ) = compl (AlgInterpretation I ϕ) :=
+        by
+          unfold Formula.negation
+          have Haux : AlgInterpretation I (ϕ⇒⊥) = AlgInterpretation I ϕ ⇨ AlgInterpretation I ⊥ := by rfl
+          rw [Haux]
+          have Haux : AlgInterpretation I ⊥ = Bot.bot := by rfl
+          rw [Haux]
+          simp
+      have Hneqbot : AlgInterpretation I (~ϕ) ≠ ⊥ :=
+        by
+          rw [Hcompl]
+          simp
+          rw [<-compl_top]
+          intro Hcompl
+          simp at Hnint
+          apply Hnint
+          have Haux : (AlgInterpretation I ϕ)ᶜ = AlgInterpretation I ϕ ⇨ ⊥ := by simp
+          sorry
+      sorry

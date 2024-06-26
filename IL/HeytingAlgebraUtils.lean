@@ -3,21 +3,32 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Data.List.Basic
 import Mathlib.Order.Zorn
 
-variable {α : Type u} [HeytingAlgebra α]
+variable {α : Type u} [HeytingAlgebra α] {x y z t : α}
 
-def filter (F : Set α) := (Set.Nonempty F) ∧ (∀ (x y : α), x ∈ F → y ∈ F → x ⊓ y ∈ F) ∧
-                          (∀ (x y : α), x ∈ F → x ≤ y → y ∈ F)
-
-lemma top_mem_filter (F : Set α) (Hfilter : filter F) : ⊤ ∈ F :=
+lemma himp_conj_simp : x ⊓ (y ⇨ z) = x ⊓ ((x ⊓ y) ⇨ (x ⊓ z)) :=
   by
-    let Hnempty := Hfilter.1
-    have Haux : ∃ (x : α), x ∈ F := by assumption
-    rcases Haux with ⟨x, Hxin⟩
-    exact Hfilter.2.2 x ⊤ Hxin le_top
+    apply le_antisymm
+    · have Haux : x ⊓ (y ⇨ z) ≤ x ⊓ y ⇨ x ⊓ z :=
+        by
+          rw [le_himp_iff]
+          apply le_trans (le_inf inf_le_left (le_trans inf_le_right inf_le_right))
+          rw [inf_assoc, himp_inf_self, <-inf_assoc]
+          exact inf_le_left
+      exact le_inf inf_le_left Haux
+    · have Haux : x ⊓ ((x ⊓ y) ⇨ (x ⊓ z)) ≤ y ⇨ z :=
+        by
+          rw [le_himp_iff, inf_comm, <-inf_assoc]
+          have Hcomm : y ⊓ x = x ⊓ y := inf_comm
+          rw [Hcomm, inf_himp]
+          exact le_trans inf_le_right inf_le_right
+      exact le_inf inf_le_left Haux
 
-def deductive_system (F : Set α) := ⊤ ∈ F ∧ (∀ (x y : α), x ∈ F → x ⇨ y ∈ F → y ∈ F)
+def filter (F : Set α) := (Set.Nonempty F) ∧ (∀ (x y : α), x ∈ F -> y ∈ F -> x ⊓ y ∈ F) ∧
+                          (∀ (x y : α), x ∈ F -> x ≤ y -> y ∈ F)
 
-lemma filter_dedsyst_equiv {x y : α} (F : Set α) : filter F ↔ deductive_system F :=
+def deductive_system (F : Set α) := ⊤ ∈ F ∧ (∀ (x y : α), x ∈ F -> x ⇨ y ∈ F -> y ∈ F)
+
+lemma filter_dedsyst_equiv (F : Set α) : filter F <-> deductive_system F :=
   by
     apply Iff.intro
     · intro Hf
@@ -37,7 +48,7 @@ lemma filter_dedsyst_equiv {x y : α} (F : Set α) : filter F ↔ deductive_syst
       rcases Hd with ⟨Ht, Hxy⟩
       apply And.intro
       · exists ⊤
-      · have Haux : ∀ (x y : α), x ∈ F → x ≤ y → y ∈ F :=
+      · have Haux : ∀ (x y : α), x ∈ F -> x ≤ y -> y ∈ F :=
           by
             intros x y Hxin Hle
             rw [<-himp_eq_top_iff] at Hle
@@ -52,8 +63,9 @@ lemma filter_dedsyst_equiv {x y : α} (F : Set α) : filter F ↔ deductive_syst
                   rw [le_himp_iff]
                   exact inf_le_left
               exact Haux y (x ⇨ y) Hyin Haux'
-          have Haux' : x ⇨ y = x ⇨ x ⊓ y := by rw [himp_inf_distrib]; simp
-          rw [Haux'] at Haux
+          have Haux' : ∀ (u : α), u ≤ x ⇨ x ⊓ y <-> u ≤ x ⇨ y := by simp
+          have Haux'' : x ⇨ x ⊓ y = x ⇨ y := by rw [himp_inf_distrib]; simp
+          rw [<-Haux''] at Haux
           exact Hxy x (x ⊓ y) Hxin Haux
         · exact Haux
 
@@ -74,7 +86,8 @@ lemma X_subset_X_gen_filter (X : Set α) : X ⊆ X_gen_filter X :=
 lemma X_gen_filter_filter (X : Set α) (Hnempty : Set.Nonempty X) : filter (X_gen_filter X) :=
   by
     apply And.intro
-    · rcases Hnempty with ⟨x, Hinx⟩
+    · unfold Set.Nonempty at Hnempty
+      rcases Hnempty with ⟨x, Hinx⟩
       exists x
       unfold X_gen_filter
       simp
@@ -118,7 +131,8 @@ lemma inf_list_mem {F : Set α} {Hfilter : filter F} {l : List α} (Hsubset : l.
   by
     induction l with
     | nil => simp
-             exact @top_mem_filter α _ F Hfilter
+             rw [filter_dedsyst_equiv F] at Hfilter
+             exact Hfilter.left; assumption'
     | cons h t ih => simp
                      rcases Hfilter with ⟨_, ⟨Hand, _⟩⟩
                      simp at Hsubset
@@ -128,7 +142,7 @@ lemma inf_list_mem {F : Set α} {Hfilter : filter F} {l : List α} (Hsubset : l.
                      · simp at ih
                        exact ih Hsubset.right
 
-lemma inf_list_eq {l : List α} (Heq : ∀ (z : α), z ∈ l → z = x) :
+lemma inf_list_eq {l : List α} (Heq : ∀ (z : α), z ∈ l -> z = x) :
   l = [] ∨ inf_list l = x :=
   by
     induction l with
@@ -178,7 +192,7 @@ lemma gen_filter_prop (X : Set α) :
         intro x HxinX
         exists [x]
         simp; assumption
-    have Hmin : ∀ (F : Set α), filter F → X ⊆ F → S ⊆ F :=
+    have Hmin : ∀ (F : Set α), filter F -> X ⊆ F -> S ⊆ F :=
       by
         intro F Hfilter Hsubset
         rw [Set.subset_def]
@@ -200,7 +214,7 @@ lemma gen_filter_prop (X : Set α) :
       exact Set.mem_of_subset_of_mem (Hmin F Hfilter Hsubset) HinS
 
 lemma mem_gen_ins_filter (F : Set α) (Hfilter : filter F) :
-  y ∈ X_gen_filter (F ∪ {x}) → ∃ (z : α), z ∈ F /\ x ⊓ z ≤ y :=
+  y ∈ X_gen_filter (F ∪ {x}) -> ∃ (z : α), z ∈ F /\ x ⊓ z ≤ y :=
   by
     intro Hin
     rw [gen_filter_prop] at Hin
@@ -267,7 +281,7 @@ lemma himp_not_mem (F : Set α) (Hfilter : filter F) (Himp_not_mem : x ⇨ y ∉
   by
     intro Hcontra
     have Haux : ∃ (z : α), z ∈ F /\ x ⊓ z ≤ y :=
-      by apply mem_gen_ins_filter F Hfilter Hcontra
+      by apply mem_gen_ins_filter F Hfilter Hcontra; assumption
     rcases Haux with ⟨z, ⟨Hzin, Hglb⟩⟩
     rw [inf_comm, <-le_himp_iff] at Hglb
     exact Himp_not_mem ((Hfilter.right).right z (x ⇨ y) Hzin Hglb)
@@ -282,20 +296,19 @@ lemma himp_not_mem_proper (F : Set α) (Hfilter : filter F) (Himp_not_mem : xᶜ
       exact X_gen_filter_filter (insert x F) (Set.insert_nonempty x F)
     · apply himp_not_mem
       · assumption
+      · assumption
       · simp; assumption
 
-def prime_filter (F : Set α) :=
-  proper_filter F ∧ (∀ (x y : α), x ⊔ y ∈ F → x ∈ F ∨ y ∈ F)
-
-def prime_filters := {F | @prime_filter α _ F}
+def prime_filter {α : Type} [HeytingAlgebra α] (F : Set α) :=
+  proper_filter F ∧ (∀ (x y : α), x ⊔ y ∈ F -> x ∈ F ∨ y ∈ F)
 
 def X_filters_not_cont_x (x : α) := {F | filter F ∧ x ∉ F}
 
-lemma super_prime_filter (x : α) (F : Set α) (Hfilter : @filter α _ F) (Hnotin : x ∉ F) :
+lemma super_prime_filter {α : Type} [HeytingAlgebra α] (x : α) (F : Set α) (Hfilter : @filter α _ F) (Hnotin : x ∉ F) :
   ∃ (P : Set α), @prime_filter α _ P /\ F ⊆ P /\ x ∉ P :=
   by
     have Hzorn : ∃ F' ∈ X_filters_not_cont_x x, F ⊆ F' ∧
-                 ∀ (F'' : Set α), F'' ∈ X_filters_not_cont_x x → F' ⊆ F'' → F'' = F' :=
+                 ∀ (F'' : Set α), F'' ∈ X_filters_not_cont_x x -> F' ⊆ F'' -> F'' = F' :=
       by
         apply zorn_subset_nonempty
         · intro c Hsubset Hchain Hnempty
@@ -315,29 +328,42 @@ lemma super_prime_filter (x : α) (F : Set α) (Hfilter : @filter α _ F) (Hnoti
                   exact (Htrans.left).left
               · apply And.intro
                 · intro y z Hyin Hzin
+                  simp at Hyin
+                  simp at Hzin
+                  simp
                   rcases Hyin with ⟨F1, ⟨HF1in_c, Hyin_f1⟩⟩
                   rcases Hzin with ⟨F2, ⟨HF2in_c, Hzin_f2⟩⟩
-                  have Htrans1 : F1 ∈ X_filters_not_cont_x x := by apply Set.mem_of_mem_of_subset HF1in_c Hsubset
-                  have Htrans2 : F2 ∈ X_filters_not_cont_x x := by apply Set.mem_of_mem_of_subset HF2in_c Hsubset
+                  have Htrans1 : F1 ∈ X_filters_not_cont_x x :=
+                    by apply Set.mem_of_mem_of_subset HF1in_c Hsubset
+                  have Htrans2 : F2 ∈ X_filters_not_cont_x x :=
+                    by apply Set.mem_of_mem_of_subset HF2in_c Hsubset
                   by_cases Hfeq : F1 = F2
                   · rw [<-Hfeq] at Hzin_f2
                     exists F1
                     exact And.intro HF1in_c (((Htrans1.left).right).left y z Hyin_f1 Hzin_f2)
-                  · rcases Hchain HF1in_c HF2in_c Hfeq with H12 | H21
-                    · have Htrans : y ∈ F2 := by apply Set.mem_of_mem_of_subset Hyin_f1 H12
+                  · unfold IsChain at Hchain
+                    rcases Hchain HF1in_c HF2in_c Hfeq with H12 | H21
+                    · have Htrans : y ∈ F2 :=
+                        by apply Set.mem_of_mem_of_subset Hyin_f1 H12
                       exists F2
                       exact And.intro HF2in_c (((Htrans2.left).right).left y z Htrans Hzin_f2)
-                    · have Htrans : z ∈ F1 := by apply Set.mem_of_mem_of_subset Hzin_f2 H21
+                    · have Htrans : z ∈ F1 :=
+                        by apply Set.mem_of_mem_of_subset Hzin_f2 H21
                       exists F1
                       exact And.intro HF1in_c (((Htrans1.left).right).left y z Hyin_f1 Htrans)
                 · intro y z Hyin Hle
+                  simp at Hyin
+                  simp
                   rcases Hyin with ⟨F', ⟨Hfin_c, Hyin⟩⟩
                   exists F'
                   have Htrans : F' ∈ X_filters_not_cont_x x :=
                     by apply Set.mem_of_mem_of_subset Hfin_c Hsubset
                   exact And.intro Hfin_c (((Htrans.left).right).right y z Hyin Hle)
             · intro S HSin
-              have Htrans : S ∈ X_filters_not_cont_x x := by apply Set.mem_of_mem_of_subset HSin Hsubset
+              have Htrans : S ∈ X_filters_not_cont_x x :=
+                by apply Set.mem_of_mem_of_subset HSin Hsubset
+              unfold X_filters_not_cont_x at Htrans
+              simp at Htrans
               exact Htrans.right
           · intro S HSin
             apply Set.subset_sUnion_of_mem
@@ -362,6 +388,7 @@ lemma super_prime_filter (x : α) (F : Set α) (Hfilter : @filter α _ F) (Hnoti
         rcases Hnotin with ⟨Hxnotin, Hynotin⟩
         have Hsubset1 : P ⊂ X_gen_filter (P ∪ {y}) :=
           by
+            simp
             unfold X_gen_filter
             rw [Set.ssubset_def]
             apply And.intro
@@ -424,9 +451,9 @@ lemma super_prime_filter (x : α) (F : Set α) (Hfilter : @filter α _ F) (Hnoti
               exfalso
               exact Hsubset2.right (Eq.subset (Hmax (X_gen_filter (P ∪ {z})) Hfilter_not_cont Hsubset2.left))
         have Hu : ∃ u ∈ P, y ⊓ u ≤ x :=
-          by apply mem_gen_ins_filter P HPin.left Hxin1
+          by apply mem_gen_ins_filter P HPin.left Hxin1; assumption
         have Hv : ∃ v ∈ P, z ⊓ v ≤ x :=
-          by apply mem_gen_ins_filter P HPin.left Hxin2
+          by apply mem_gen_ins_filter P HPin.left Hxin2; assumption
         rcases Hu with ⟨u, ⟨Huin, Hglbu⟩⟩
         rcases Hv with ⟨v, ⟨Hvin, Hglbv⟩⟩
         let c := u ⊓ v
@@ -450,39 +477,3 @@ lemma super_prime_filter (x : α) (F : Set α) (Hfilter : @filter α _ F) (Hnoti
         exact HPin.right (((Hproper.left).right).right ((y ⊔ z) ⊓ c) x
                           (((Hproper.left).right).left (y ⊔ z) c Horin Hcin) Haux)
     · exact And.intro HFsubset (HPin.right)
-
-lemma super_prime_filter_cor1 (x : α) (Hnottop : x ≠ ⊤) :
-  ∃ (P : Set α), @prime_filter α _ P /\ x ∉ P :=
-  by
-    let Htopfilter : @filter α _ {⊤} :=
-      by
-        apply And.intro
-        · simp
-        · simp
-          intro x y Hxtop Htople
-          rw [Hxtop] at Htople
-          rw [top_le_iff] at Htople
-          assumption
-    let Haux := @super_prime_filter α _ x {⊤} Htopfilter Hnottop
-    rcases Haux with ⟨P, ⟨_, ⟨_, _⟩⟩⟩
-    exists P
-
-lemma super_prime_filter_cor2 : Set.sInter (@prime_filters α _) = {⊤} :=
-  by
-    rw [Set.ext_iff]
-    intro x
-    apply Iff.intro
-    · intro Hincap
-      simp
-      by_cases Heqtop : x = ⊤
-      · assumption
-      · exfalso
-        let Haux := @super_prime_filter_cor1 α _ x Heqtop
-        rcases Haux with ⟨P, ⟨Hprime, Hxnotin⟩⟩
-        have Haux' : P ∈ prime_filters := by simp only [prime_filters]; assumption
-        exact  Hxnotin (Hincap P Haux')
-    · intro Htop
-      rw [Htop]
-      intro F Hprime
-      rcases Hprime with ⟨⟨Hfilter, _⟩, _⟩
-      exact @top_mem_filter α _ F Hfilter
