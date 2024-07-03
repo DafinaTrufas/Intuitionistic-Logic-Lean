@@ -8,27 +8,7 @@ import Mathlib.Data.Nat.Basic
 
 set_option autoImplicit false
 
-variable {Γ Δ : Set Formula} {ϕ ψ χ γ : Formula}
-
-lemma perm_list_indices_mem (Φ Ω : List Formula) (Hperm : Φ ~ Ω) (f : Formula -> Nat) :
-  ∀ (ϕ : Formula), f ϕ ∈ List.map f Φ -> f ϕ ∈ List.map f Ω :=
-  by
-    induction Hperm with
-    | nil => simp
-    | @cons x l1' l2' ihperm ihequiv => simp
-                                        intros ϕ Hor
-                                        rcases Hor with Hh | ⟨a, ⟨Hain, Hfeq⟩⟩
-                                        · apply Or.inl; assumption
-                                        · apply Or.inr; simp at ihequiv; apply ihequiv; assumption'
-    | swap x y l => simp
-                    intros ϕ Hor
-                    rcases Hor with _ | H2
-                    · apply Or.inr; apply Or.inl; assumption
-                    · cases H2
-                      · apply Or.inl; assumption
-                      · apply Or.inr; apply Or.inr; assumption
-    | @trans l1' _ _ _ _ ihequiv12 ihequiv23 => intros ϕ Hl1
-                                                exact ihequiv23 ϕ (ihequiv12 ϕ Hl1)
+variable {ϕ : Formula}
 
 @[simp]
 def pf_elem (Φ : Finset Formula) (f : Formula -> Nat) :=
