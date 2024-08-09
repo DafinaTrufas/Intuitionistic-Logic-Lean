@@ -1,10 +1,8 @@
-import IL.Formula
+import Il.Formula
 import Mathlib.Data.List.Basic
-import Mathlib.Data.List.Card
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Finite
 import Mathlib.Data.Finset.Basic
-import Mathlib.Data.Nat.Basic
 
 set_option autoImplicit false
 
@@ -281,9 +279,10 @@ def nconsContra : Γ ⊢ ϕ ∧∧ χ ⇒ ψ → Γ ⊢ ϕ ⇒ ψ ∨∨ χ → 
 def impldef : Γ ⊢ (~ϕ ∨∨ ψ) ⇒ (ϕ ⇒ ψ) :=
   disjIntroAtHyp (permuteHyps exFalsoImpl) implProjLeft
 
-lemma subset_proof : Δ ⊆ Γ → Δ ⊢ ϕ → Γ ⊢ ϕ :=
+lemma subset_proof : Δ ⊆ Γ → Δ ⊢ ϕ → Nonempty (Γ ⊢ ϕ) :=
   by
     intros Hsubseteq Hdelta
+    apply Nonempty.intro
     induction Hdelta with
     | premise Hvp => exact (premise (Set.mem_of_mem_of_subset Hvp Hsubseteq))
     | contractionDisj => exact contractionDisj
@@ -299,7 +298,7 @@ lemma subset_proof : Δ ⊆ Γ → Δ ⊢ ϕ → Γ ⊢ ϕ :=
     | importation _ ih => exact (importation ih)
     | expansion _ ih => exact (expansion ih)
 
-lemma empty_proof : ∅ ⊢ ϕ → Γ ⊢ ϕ :=
+lemma empty_proof : ∅ ⊢ ϕ → Nonempty (Γ ⊢ ϕ) :=
   by
     intros Hempty
     apply subset_proof (Set.empty_subset Γ)
@@ -307,9 +306,10 @@ lemma empty_proof : ∅ ⊢ ϕ → Γ ⊢ ϕ :=
 
 def set_proof_set : Type := ∀ (ϕ : Formula), ϕ ∈ Δ → Γ ⊢ ϕ
 
-lemma set_conseq_proof (Hset : @set_proof_set Γ Δ) : Δ ⊢ ϕ → Γ ⊢ ϕ :=
+lemma set_conseq_proof (Hset : @set_proof_set Γ Δ) : Δ ⊢ ϕ → Nonempty (Γ ⊢ ϕ) :=
   by
     intros Hdelta
+    apply Nonempty.intro
     induction Hdelta with
     | premise _ => apply Hset; assumption
     | contractionDisj => exact contractionDisj
@@ -346,17 +346,17 @@ noncomputable def toFinitePremises {ϕ : Formula} (p : Proof Γ ϕ) : Proof (@us
   | exfalso => exfalso
   | modusPonens p1 p2 => have Hincl1 : usedPremises p1 ⊆ usedPremises (modusPonens p1 p2) :=
                           by apply Finset.subset_union_left
-                         let Hsubset1 := subset_proof Hincl1 (toFinitePremises p1)
+                         let Hsubset1 := Classical.choice (subset_proof Hincl1 (toFinitePremises p1))
                          have Hincl2 : usedPremises p2 ⊆ usedPremises (modusPonens p1 p2) :=
                           by apply Finset.subset_union_right
-                         let Hsubset2 := subset_proof Hincl2 (toFinitePremises p2)
+                         let Hsubset2 := Classical.choice (subset_proof Hincl2 (toFinitePremises p2))
                          modusPonens Hsubset1 Hsubset2
   | syllogism p1 p2 => have Hincl1 : usedPremises p1 ⊆ usedPremises (syllogism p1 p2) :=
                         by apply Finset.subset_union_left
-                       let Hsubset1 := subset_proof Hincl1 (toFinitePremises p1)
+                       let Hsubset1 := Classical.choice (subset_proof Hincl1 (toFinitePremises p1))
                        have Hincl2 : usedPremises p2 ⊆ usedPremises (syllogism p1 p2) :=
                         by apply Finset.subset_union_right
-                       let Hsubset2 := subset_proof Hincl2 (toFinitePremises p2)
+                       let Hsubset2 := Classical.choice (subset_proof Hincl2 (toFinitePremises p2))
                        syllogism Hsubset1 Hsubset2
   | exportation p => exportation (toFinitePremises p)
   | importation p => importation (toFinitePremises p)
@@ -406,15 +406,17 @@ noncomputable def deductionTheorem_left {ϕ ψ : Formula} (p : Γ ∪ {ϕ} ⊢ �
 
 noncomputable def deductionTheorem_right {ϕ ψ : Formula} (p : Γ ⊢ ϕ ⇒ ψ) : Γ ∪ {ϕ} ⊢ ψ :=
   let p1 : ϕ ∈ Γ ∪ {ϕ} := by rw [Set.mem_union]; apply Or.inr; apply Set.mem_singleton
-  modusPonens (premise p1) (subset_proof (Set.subset_union_left Γ {ϕ}) p)
+  let Haux := Classical.choice (subset_proof (@Set.subset_union_left _ Γ {ϕ}) p)
+  modusPonens (premise p1) Haux
 
 lemma deductionTheorem_left_ind {Γ : List Formula} {Δ : Set Formula} {ϕ : Formula} :
-  Δ ∪ Γ.toFinset ⊢ ϕ → Δ ⊢ Γ.foldr Formula.implication ϕ :=
+  Δ ∪ Γ.toFinset ⊢ ϕ → Nonempty (Δ ⊢ Γ.foldr Formula.implication ϕ) :=
   by
     revert Δ
     induction Γ with
     | nil => intros Δ Hdelta
              rw [List.toFinset_nil, Finset.coe_empty, Set.union_empty] at Hdelta
+             apply Nonempty.intro
              assumption
     | cons h t ih => intros Δ Hdelta
                      have Haux : Δ ∪ {h} ∪ (List.toFinset t).toSet ⊢ ϕ :=
@@ -422,15 +424,17 @@ lemma deductionTheorem_left_ind {Γ : List Formula} {Δ : Set Formula} {ϕ : For
                         rw [List.toFinset_cons, Finset.insert_eq, Finset.coe_union,
                             Finset.coe_singleton, <-Set.union_assoc] at Hdelta
                         assumption
-                     exact (deductionTheorem_left (@ih (Δ ∪ {h}) Haux))
+                     let Haux := (Classical.choice (@ih (Δ ∪ {h}) Haux))
+                     exact Nonempty.intro (deductionTheorem_left Haux)
 
 lemma deductionTheorem_right_ind {Γ : List Formula} {Δ : Set Formula} {ϕ : Formula} :
-  Δ ⊢ Γ.foldr Formula.implication ϕ → Δ ∪ Γ.toFinset ⊢ ϕ :=
+  Δ ⊢ Γ.foldr Formula.implication ϕ → Nonempty (Δ ∪ Γ.toFinset ⊢ ϕ) :=
   by
     revert Δ
     induction Γ with
     | nil => intros Δ Hdelta
              simp
+             apply Nonempty.intro
              assumption
     | cons h t ih => intros Δ Hdelta
                      let Hih := @ih (Δ ∪ {h}) (deductionTheorem_right Hdelta)
@@ -438,31 +442,36 @@ lemma deductionTheorem_right_ind {Γ : List Formula} {Δ : Set Formula} {ϕ : Fo
                      assumption
 
 lemma exportation_ind {Γ : List Formula} {Δ : Set Formula} {ϕ : Formula} :
-  Δ ⊢ Γ.foldr Formula.and ⊤ ⇒ ϕ → Δ ⊢ Γ.foldr Formula.implication ϕ :=
+  Δ ⊢ Γ.foldr Formula.and ⊤ ⇒ ϕ → Nonempty (Δ ⊢ Γ.foldr Formula.implication ϕ) :=
   by
     revert Δ
     induction Γ with
     | nil => intros Δ Hnot
+             apply Nonempty.intro
              apply modusPonens implSelf Hnot
     | cons h t ih => intros Δ Hand
-                     exact deductionTheorem_left (@ih (Δ ∪ {h}) (deductionTheorem_right (exportation Hand)))
+                     let Haux := (Classical.choice (@ih (Δ ∪ {h}) (deductionTheorem_right (exportation Hand))))
+                     exact Nonempty.intro (deductionTheorem_left Haux)
 
 lemma importation_ind {Γ : List Formula} {Δ : Set Formula} {ϕ : Formula} :
-  Δ ⊢ Γ.foldr Formula.implication ϕ → Δ ⊢ Γ.foldr Formula.and ⊤ ⇒ ϕ :=
+  Δ ⊢ Γ.foldr Formula.implication ϕ → Nonempty (Δ ⊢ Γ.foldr Formula.and ⊤ ⇒ ϕ) :=
   by
     revert Δ
     induction Γ with
     | nil => intros Δ Hdelta
+             apply Nonempty.intro
              apply deductionTheorem_left
              have Hincl : Δ ⊆ Δ ∪ {Formula.top} := by apply Set.subset_union_left
+             apply Classical.choice
              apply subset_proof Hincl
              assumption
     | cons h t ih => intros Δ Himpl
+                     apply Nonempty.intro
                      apply importation
                      apply deductionTheorem_left
-                     exact @ih (Δ ∪ {h}) (deductionTheorem_right Himpl)
+                     exact Classical.choice (@ih (Δ ∪ {h}) (deductionTheorem_right Himpl))
 
-lemma permutationConj_ind (l1 l2 : List Formula) (Hperm : l1 ~ l2) :
+lemma permutationConj_ind (l1 l2 : List Formula) (Hperm : List.Perm l1 l2) :
   Nonempty (∅ ⊢ List.foldr Formula.and ⊤ l1 ⇒ List.foldr Formula.and ⊤ l2) :=
   by
     induction Hperm with
@@ -474,7 +483,7 @@ lemma permutationConj_ind (l1 l2 : List Formula) (Hperm : l1 ~ l2) :
     | @trans _ _ _ _ _ ihequiv12 ihequiv23 => apply Nonempty.intro
                                               apply syllogism (Classical.choice ihequiv12) (Classical.choice ihequiv23)
 
-lemma permutationDisj_ind (l1 l2 : List Formula) (Hperm : l1 ~ l2) :
+lemma permutationDisj_ind (l1 l2 : List Formula) (Hperm : List.Perm l1 l2) :
   Nonempty (∅ ⊢ List.foldr Formula.or ⊥ l1 ⇒ List.foldr Formula.or ⊥ l2) :=
   by
     induction Hperm with
@@ -517,7 +526,9 @@ lemma foldrAndUnion_insert (ϕ : Formula) (Φ Ω : Finset Formula) (Hnotin : ϕ 
       rw [Hinsert]
       have Hh : ∅ ⊢ List.foldr Formula.and ⊤ (Finset.toList (Φ ∪ Ω)) ⇒ ϕ :=
         by
+          apply Classical.choice
           apply importation_ind
+          apply Classical.choice
           apply deductionTheorem_left_ind
           rw [Set.empty_union]
           apply premise
@@ -612,7 +623,7 @@ lemma foldrOrUnion_insert (ϕ : Formula) (Φ Ω : Finset Formula) (Hnotin : ϕ �
           simp
           assumption
       have Hnotin : ϕ ∉ (Φ ∪ Ω) \ {ϕ} := by simp
-      have Hperm : (Φ ∪ Ω).toList ~ ϕ :: ((Φ ∪ Ω) \ {ϕ}).toList :=
+      have Hperm : List.Perm (Φ ∪ Ω).toList (ϕ :: ((Φ ∪ Ω) \ {ϕ}).toList) :=
         by
           let Hcons := Finset.toList_cons Hnotin
           simp at Hcons

@@ -1,10 +1,8 @@
-import IL.Formula
+import Il.Formula
 import Mathlib.Data.List.Basic
-import Mathlib.Data.List.Card
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Finite
 import Mathlib.Data.Finset.Basic
-import Mathlib.Data.Nat.Basic
 
 set_option autoImplicit false
 

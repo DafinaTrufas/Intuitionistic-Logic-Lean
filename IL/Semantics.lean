@@ -1,5 +1,5 @@
-import IL.Formula
-import IL.Syntax
+import Il.Formula
+import Il.Syntax
 import Mathlib.Data.Set.Basic
 
 set_option autoImplicit false

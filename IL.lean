@@ -1,1 +1,3 @@
-def hello := "world"
+-- This module serves as the root of the `Il` library.
+-- Import modules here that should be built as part of the library.
+import Il.Basic

@@ -140,7 +140,7 @@ lemma inf_list_eq {l : List α} (Heq : ∀ (z : α), z ∈ l → z = x) :
                      · rw [Ht]; simp; exact Heq.left
                      · rw [Heq.left, Hx]; simp
 
-lemma inf_list_perm_eq {l1 l2 : List α} (Hperm : l1 ~ l2) :
+lemma inf_list_perm_eq {l1 l2 : List α} (Hperm : List.Perm l1 l2) :
   inf_list l1 = inf_list l2 :=
   by
     induction Hperm with
@@ -211,13 +211,12 @@ lemma mem_gen_ins_filter (F : Set α) (Hfilter : filter F) :
     let leqx := l.filter (fun (z : α) => z = x)
     have Hinf_split : inf_list l = inf_list leqx ⊓ inf_list lneqx :=
       by
-        have Hperm : l ~ leqx ++ lneqx :=
+        have Hperm : List.Perm l (leqx ++ lneqx) :=
           by
             rw [List.perm_comm]
-            simp
             let Haux := List.filter_append_perm (fun z => z = x) l
-            simp at Haux
-            assumption
+            simp [leqx, lneqx]
+            exact Haux
         let Haux := inf_list_perm_eq Hperm
         rw [inf_list_concat] at Haux
         assumption
@@ -231,7 +230,7 @@ lemma mem_gen_ins_filter (F : Set α) (Hfilter : filter F) :
     have Hinfeq : leqx = [] ∨ inf_list leqx = x := by apply inf_list_eq Haux
     have Hinfneqin : inf_list lneqx ∈ F :=
       by
-        have Hsubset'' : lneqx ⊆ l := by simp
+        have Hsubset'' : lneqx ⊆ l := by simp [lneqx]
         have Hsubset''' : lneqx.toFinset.toSet ⊆ l.toFinset.toSet :=
           by
             rw [Set.subset_def]
@@ -358,7 +357,6 @@ lemma super_prime_filter (x : α) (F : Set α) (Hfilter : @filter α _ F) (Hnoti
               exact HPin.right (((HPin.left).right).right ⊥ x Hbot_in bot_le)
         let Hprime := Hprime Hproper
         rcases Hprime with ⟨y, ⟨z, ⟨Horin, Hnotin⟩⟩⟩
-        push_neg at Hnotin
         rcases Hnotin with ⟨Hxnotin, Hynotin⟩
         have Hsubset1 : P ⊂ X_gen_filter (P ∪ {y}) :=
           by

@@ -1,6 +1,4 @@
 import Mathlib.Data.Countable.Basic
-import Mathlib.Logic.Equiv.List
-import Mathlib.Data.Nat.Pow
 
 set_option autoImplicit false
 
@@ -46,10 +44,14 @@ lemma pairing_0 {x y : ℕ} : pairing x y = 0 → x = 0 ∧ y = 0 :=
         · assumption
         · rw [hx] at Hp
           simp at Hp
+          let Hp := Nat.eq_zero_of_mul_eq_zero Hp
+          simp at Hp
           assumption
     · apply And.intro
       · by_cases hy : y = 0
         · rw [hy] at Hp
+          simp at Hp
+          let Hp := Nat.eq_zero_of_mul_eq_zero Hp.right
           simp at Hp
           assumption
         · rcases Nat.eq_zero_or_pos x with H0 | _
@@ -57,8 +59,16 @@ lemma pairing_0 {x y : ℕ} : pairing x y = 0 → x = 0 ∧ y = 0 :=
           · have H : 2 <= (x + y) * (x + y + 1) :=
               by
                 apply @Nat.le_trans 2 (x + y + 1)
-                · apply Nat.succ_le_of_lt; simp; apply Or.inl; assumption
-                · simp; apply @Nat.le_trans 1 x
+                · apply Nat.succ_le_of_lt
+                  simp
+                  apply @Nat.lt_trans 0 x
+                  · assumption
+                  · simp; apply Nat.pos_of_ne_zero; assumption
+                · conv =>
+                    lhs
+                    rw [<-@Nat.mul_one (x + y + 1), Nat.mul_comm]
+                  apply Nat.mul_le_mul_right
+                  apply @Nat.le_trans 1 x
                   · assumption
                   · simp
             have H' : 2 <= (x + y) * (x + y + 1) + 2 * x :=
@@ -68,7 +78,8 @@ lemma pairing_0 {x y : ℕ} : pairing x y = 0 → x = 0 ∧ y = 0 :=
       · rcases Nat.eq_zero_or_pos x with H0 | _
         · contradiction
         · simp at Hp
-          rcases Hp
+          let Hp := Nat.eq_zero_of_mul_eq_zero Hp.right
+          simp at Hp
           contradiction
 
 lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
@@ -79,15 +90,21 @@ lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
       unfold pairing at Heq
       let a := x + y
       let b := z + t
-      have Heq' : a * (a + 1) + 2 * x = b * (b + 1) + 2 * z := by simp; assumption
-      by_cases a = b
+      have Heq' : a * (a + 1) + 2 * x = b * (b + 1) + 2 * z := by assumption
+      by_cases h : a = b
       · rw [h] at Heq'
         simp at Heq'
-        simp at h
-        rw [Heq'] at h
-        simp at h
+        let Hxz : x = z :=
+          by
+            apply @Nat.eq_of_mul_eq_mul_left x z 2
+            · simp
+            · assumption
         apply And.intro
-        assumption'
+        · assumption
+        · simp [a, b] at h
+          rw [Hxz] at h
+          simp at h
+          assumption
       · exfalso
         by_cases Hab : a < b
         · let d := b - a
@@ -137,7 +154,7 @@ lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
           · have Hge : 2 * (x - z) ≥ 2 * (a + 1) :=
               by
                 rw [Heq'']
-                have Haux : 2 * (a + 1) = 2 + 2 * a := by rw [mul_add, add_comm]
+                have Haux : 2 * (a + 1) = 2 + 2 * a := by rw [Nat.mul_add, add_comm]
                 rw [Haux]
                 rw [add_comm, <-add_assoc, <-add_assoc, add_assoc]
                 have Hd : d >= 1 := by apply Nat.sub_pos_of_lt Hab
@@ -158,7 +175,9 @@ lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
             have Hge := Nat.add_lt_of_lt_sub (Nat.lt_of_succ_le Hge)
             simp at Hge
             rw [add_assoc] at Hge
-            simp at Hge
+            let Haux := Nat.le_add_right x (y + z)
+            let Hge := Nat.not_le_of_lt Hge
+            contradiction
           · simp
         · let d := a - b
           have Haux : a = d + b :=
@@ -208,7 +227,7 @@ lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
           · have Hge : 2 * (z - x) ≥ 2 * (b + 1) :=
               by
                 rw [Heq'']
-                have Haux : 2 * (b + 1) = 2 + 2 * b := by rw [mul_add, add_comm]
+                have Haux : 2 * (b + 1) = 2 + 2 * b := by rw [Nat.mul_add, add_comm]
                 rw [Haux]
                 rw [add_comm, <-add_assoc, <-add_assoc, add_assoc]
                 let Ht := Nat.lt_trichotomy a b
@@ -234,7 +253,9 @@ lemma pairing_inj (x y z t : ℕ) : pairing x y = pairing z t ↔
             have Hge := Nat.add_lt_of_lt_sub (Nat.lt_of_succ_le Hge)
             simp at Hge
             rw [add_assoc] at Hge
-            simp at Hge
+            let Haux := Nat.le_add_right z (t + x)
+            let Hge := Nat.not_le_of_lt Hge
+            contradiction
           · simp
     · intro Heq
       rw [Heq.left, Heq.right]

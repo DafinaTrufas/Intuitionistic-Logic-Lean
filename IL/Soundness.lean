@@ -1,6 +1,6 @@
-import IL.Formula
-import IL.Syntax
-import IL.Semantics
+import Il.Formula
+import Il.Syntax
+import Il.Semantics
 import Mathlib.Data.Set.Basic
 
 set_option autoImplicit false

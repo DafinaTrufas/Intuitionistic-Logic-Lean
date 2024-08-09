@@ -1,8 +1,8 @@
-import IL.Formula
-import IL.Syntax
-import IL.Semantics
-import IL.CompletenessListUtils
-import IL.Soundness
+import Il.Formula
+import Il.Syntax
+import Il.Semantics
+import Il.CompletenessListUtils
+import Il.Soundness
 import Mathlib.Data.Set.Basic
 
 set_option autoImplicit false
@@ -76,11 +76,12 @@ lemma consistent_snd_empty : @consistent Γ -> @consistentPair Γ ∅ :=
         rw [<-Finset.coe_empty] at Hsubset2
         assumption
     rw [Homegaempty] at Hfold
+    apply Classical.choice
     apply Proof.subset_proof Hsubset1
-    let Hexp := Proof.deductionTheorem_right_ind (Proof.exportation_ind Hfold)
+    let Hexp := Proof.deductionTheorem_right_ind (Classical.choice (Proof.exportation_ind Hfold))
     rw [Set.empty_union] at Hexp
     simp at Hexp
-    assumption
+    exact Classical.choice Hexp
 
 lemma consistent_fst_consistent : @consistentPair Γ Δ -> @consistent Γ :=
   by
@@ -92,7 +93,9 @@ lemma consistent_fst_consistent : @consistentPair Γ Δ -> @consistent Γ :=
     · apply Proof.deductionTheorem_left
       rcases Homega with ⟨_, Hnonempty⟩
       apply Proof.deductionTheorem_right
+      apply Classical.choice
       apply Proof.importation_ind
+      apply Classical.choice
       apply Proof.deductionTheorem_left_ind
       rw [Set.empty_union]
       apply Classical.choice
@@ -112,14 +115,14 @@ lemma complete_pair_fst_disj : @completePair Γ Δ -> @disjunctiveTheory Γ :=
           apply Hnonempty.elim
           intros Homega
           have Homega' : ∅ ∪ Φ.toList.toFinset ⊢ vp := by rw [Set.empty_union]; simp; assumption
-          let Himp := Proof.importation_ind (Proof.deductionTheorem_left_ind Homega')
+          let Himp := Proof.importation_ind (Classical.choice (Proof.deductionTheorem_left_ind Homega'))
           exfalso
           let Hconsspec := Hcons Φ {vp} Hincl
           simp at Hconsspec
           let Hconsspec' := Hconsspec (And.left Hdelem)
           apply Hconsspec'
           have Horbot : ∅ ⊢ vp ⇒ vp ∨∨ ⊥ := by apply Proof.weakeningDisj
-          apply Proof.syllogism Himp Horbot
+          apply Proof.syllogism (Classical.choice Himp) Horbot
     apply And.intro
     · exact Hded
     · apply And.intro
@@ -173,12 +176,12 @@ lemma complete_pair_fst_disj : @completePair Γ Δ -> @disjunctiveTheory Γ :=
                         · have Haux : Finset.toList {ϕ, ψ} = [ϕ, ψ] \/ Finset.toList {ϕ, ψ} = [ψ, ϕ] :=
                             by
                               let Hvpelemdoubleton := Finset.mem_insert_self ϕ {ψ}
-                              let Hpsielemtail := Finset.mem_singleton_self ψ
-                              have Hpsielemdoubleton : ψ = ϕ ∨ ψ ∈ {ψ} := by apply Or.inr; assumption
+                              let Hpsielemdoubleton := @Finset.mem_insert_of_mem _ _ {ψ} ψ ϕ (Finset.mem_singleton_self ψ)
+                              rw [Finset.mem_insert] at Hpsielemdoubleton
                               rw [<-Finset.mem_insert] at Hpsielemdoubleton
                               rw [<-Finset.mem_toList] at Hvpelemdoubleton
                               rw [<-Finset.mem_toList] at Hpsielemdoubleton
-                              let Hcard := Finset.card_doubleton Heq
+                              let Hcard := Finset.card_pair Heq
                               let Hlengthlist := Finset.length_toList {ϕ, ψ}
                               rw [Hcard] at Hlengthlist
                               rw [List.length_eq_two] at Hlengthlist
@@ -220,15 +223,18 @@ lemma disjth_completePair : @disjunctiveTheory Γ -> @completePair Γ Γᶜ :=
           intros vp Hin
           have Helemconseq : ∅ ∪ {List.foldr Formula.and (~⊥) (Finset.toList Φ)} ⊢ vp :=
             by rw [Set.empty_union]; exact Proof.premise Hin
-          let Hded' := Proof.deductionTheorem_right_ind (Proof.exportation_ind (Proof.deductionTheorem_left Helemconseq))
+          let Hded' := Proof.deductionTheorem_right_ind (Classical.choice (Proof.exportation_ind (Proof.deductionTheorem_left Helemconseq)))
           rw [Set.empty_union] at Hded'
           simp at Hded'
-          apply Proof.subset_proof Hsubset1 Hded'
+          apply Classical.choice
+          apply Proof.subset_proof Hsubset1 (Classical.choice Hded')
       let Hdedth := Proof.deductionTheorem_right Hncons
       rw [Set.empty_union] at Hdedth
       have Htransconseq : Γ ⊢ List.foldr Formula.or ⊥ (Finset.toList Ω) :=
-        by apply Proof.set_conseq_proof Hconj Hdedth
-      by_cases Ω = ∅
+        by
+          apply Classical.choice
+          apply Proof.set_conseq_proof Hconj Hdedth
+      by_cases h : Ω = ∅
       · rw [h] at Htransconseq
         simp at Htransconseq
         exact Hcons Htransconseq
@@ -257,7 +263,7 @@ lemma consistent_disj :
   @consistentPair Γ Δ -> Disjoint Γ Δ :=
   by
     intros Hcons
-    by_cases Disjoint Γ Δ
+    by_cases h : Disjoint Γ Δ
     · assumption
     · exfalso
       rw [Set.not_disjoint_iff_nonempty_inter] at h
@@ -279,7 +285,7 @@ lemma add_preserves_cons :
   @consistentPair Γ Δ -> ∀ (ϕ : Formula), @consistentPair ({ϕ} ∪ Γ) Δ ∨ @consistentPair Γ ({ϕ} ∪ Δ) :=
   by
     intros Hcons vp
-    by_cases ¬@consistentPair ({vp} ∪ Γ) Δ ∧ ¬@consistentPair Γ ({vp} ∪ Δ)
+    by_cases h : ¬@consistentPair ({vp} ∪ Γ) Δ ∧ ¬@consistentPair Γ ({vp} ∪ Δ)
     · rcases h with ⟨Hncons1, Hncons2⟩
       unfold consistentPair at Hncons1
       unfold consistentPair at Hncons2
@@ -293,7 +299,7 @@ lemma add_preserves_cons :
       rcases h2'' with ⟨w2, h2''⟩
       have Hvp1 : vp ∈ Φ1 :=
         by
-          by_cases vp ∈ Φ1
+          by_cases h : vp ∈ Φ1
           · assumption
           · exfalso
             rw [<-Finset.mem_coe, <-Set.disjoint_singleton_right] at h
@@ -304,7 +310,7 @@ lemma add_preserves_cons :
       rw [Hauxvp1] at w1
       have Hvpi2 : vp ∈ Ω2 :=
         by
-          by_cases vp ∈ Ω2
+          by_cases h : vp ∈ Ω2
           · assumption
           · exfalso
             rw [<-Finset.mem_coe, <-Set.disjoint_singleton_right] at h
@@ -358,12 +364,12 @@ lemma add_formula_to_pair_cons (Hcons : @consistentPair Γ Δ) (ϕ : Formula) :
     · apply And.intro
       · simp; simp_rw [Hconsadd]; simp
       · apply And.intro
-        · simp; simp_rw [Hconsadd]; simp; apply Set.Subset.rfl
+        · simp; simp_rw [Hconsadd]; simp
         · simp; simp_rw [Hconsadd]
     · cases Hconsor
       · contradiction
       · apply And.intro
-        · simp; simp_rw [Hconsadd]; simp; apply Set.Subset.rfl
+        · simp; simp_rw [Hconsadd]; simp
         · apply And.intro
           · simp; simp_rw [Hconsadd]; simp
           · simp; simp_rw [Hconsadd]; simp; assumption
@@ -417,20 +423,20 @@ lemma ΓΔ_in_family {nf : Nat -> Formula} {i : Nat} : Γ ⊆ (@family Γ Δ nf 
     apply And.intro
     · induction i with
       | zero => simp
-                by_cases @consistentPair (insert (nf 0) Γ) Δ
+                by_cases h : @consistentPair (insert (nf 0) Γ) Δ
                 · simp_rw [h]; simp
-                · simp_rw [h]; simp; apply Set.Subset.rfl
+                · simp_rw [h]; simp
       | succ n ih => simp
-                     by_cases @consistentPair (insert (nf (n + 1)) (@family Γ Δ nf n).fst) (@family Γ Δ nf n).snd
+                     by_cases h : @consistentPair (insert (nf (n + 1)) (@family Γ Δ nf n).fst) (@family Γ Δ nf n).snd
                      · simp_rw [h]; simp; apply Set.subset_union_of_subset_right ih
                      · simp_rw [h]; simp; assumption
     · induction i with
       | zero => simp
-                by_cases @consistentPair (insert (nf 0) Γ) Δ
-                · simp_rw [h]; simp; apply Set.Subset.rfl
+                by_cases h : @consistentPair (insert (nf 0) Γ) Δ
+                · simp_rw [h]; simp
                 · simp_rw [h]; simp
       | succ n ih => simp
-                     by_cases @consistentPair (insert (nf (n + 1)) (@family Γ Δ nf n).fst) (@family Γ Δ nf n).snd
+                     by_cases h : @consistentPair (insert (nf (n + 1)) (@family Γ Δ nf n).fst) (@family Γ Δ nf n).snd
                      · simp_rw [h]; simp; assumption
                      · simp_rw [h]; simp; apply Set.subset_union_of_subset_right ih
 
@@ -466,7 +472,7 @@ lemma increasing_family {nf : Nat -> Formula} (i j : Nat) : i <= j ->
     induction Hleq with
     | refl => apply And.intro
               repeat apply Set.Subset.rfl
-    | @step m _ ih => by_cases @consistentPair (insert (nf (m + 1)) (@family Γ Δ nf m).fst) (@family Γ Δ nf m).snd
+    | @step m _ ih => by_cases h : @consistentPair (insert (nf (m + 1)) (@family Γ Δ nf m).fst) (@family Γ Δ nf m).snd
                       · apply And.intro
                         · simp; simp_rw [h]; simp; rw [Set.insert_eq]; apply Set.subset_union_of_subset_right (And.left ih)
                         · simp; simp_rw [h]; simp; exact And.right ih
@@ -569,7 +575,7 @@ lemma finset_subset_union_mem_local {Hcons : @consistentPair Γ Δ} (nf : Nat ->
 lemma union_consistent {Hcons :  @consistentPair Γ Δ} (fn : Formula -> Nat) (fn_inj : fn.Injective) (nf : Nat -> Formula) (nf_inv : nf = fn.invFun) :
   @consistentPair (@consistent_family_union Γ Δ Hcons nf).fst (@consistent_family_union Γ Δ Hcons nf).snd :=
   by
-    by_cases @consistentPair (@consistent_family_union Γ Δ Hcons nf).fst (@consistent_family_union Γ Δ Hcons nf).snd
+    by_cases h : @consistentPair (@consistent_family_union Γ Δ Hcons nf).fst (@consistent_family_union Γ Δ Hcons nf).snd
     · assumption
     · exfalso
       unfold consistentPair at h
@@ -697,16 +703,16 @@ lemma main_sem_lemma (Γ : setDisjTh) (ϕ : Formula) :
                                    · assumption
                                    · have Hcons' : @consistentPair (Γ ∪ {ψ}) {χ} :=
                                       by
-                                        by_cases consistentPair
+                                        by_cases h : @consistentPair (Γ ∪ {ψ}) {χ}
                                         · assumption
                                         · exfalso
                                           unfold consistentPair at h
                                           push_neg at h
                                           rcases h with ⟨Φ, Ω, h, h', h''⟩
                                           rcases h'' with ⟨w, _⟩
-                                          let Hexpthded := Proof.deductionTheorem_right_ind (Proof.exportation_ind w)
+                                          let Hexpthded := Proof.deductionTheorem_right_ind (Classical.choice (Proof.exportation_ind w))
                                           rw [Set.empty_union, Finset.toList_toFinset] at Hexpthded
-                                          let Haux := Proof.deductionTheorem_left (@Proof.subset_proof (Γ ∪ {ψ}) Φ (List.foldr Formula.or ⊥ (Finset.toList Ω)) h Hexpthded)
+                                          let Haux := Proof.deductionTheorem_left (Classical.choice (@Proof.subset_proof (Γ ∪ {ψ}) Φ (List.foldr Formula.or ⊥ (Finset.toList Ω)) h (Classical.choice Hexpthded)))
                                           rw [Set.subset_singleton_iff_eq] at h'
                                           rcases h' with Hempty | Hsingleton
                                           · rw [Finset.coe_eq_empty] at Hempty
@@ -736,7 +742,7 @@ lemma main_sem_lemma (Γ : setDisjTh) (ϕ : Formula) :
                                         exact (ih1 Hdisjthphi).2 Haux
                                      have Hphinotchi : val canonicalModel { val := Φ, property := Hdisjth } χ -> False :=
                                       by
-                                        by_cases val canonicalModel { val := Φ, property := Hdisjth } χ
+                                        by_cases h : val canonicalModel { val := Φ, property := Hdisjth } χ
                                         · let Hih2 := (ih2 Hdisjthphi).1 h
                                           rcases Hcompl with ⟨_, Hvp⟩
                                           let Hvpchi := Hvp χ
@@ -752,7 +758,7 @@ lemma main_sem_lemma (Γ : setDisjTh) (ϕ : Formula) :
                                    intros Φ Φdisj Hincl Hpsi1
                                    let Hdisjthphi : setDisjTh := ⟨Φ, Φdisj⟩
                                    rcases Φdisj with ⟨Hded', ⟨Hcons', Hdisj'⟩⟩
-                                   · by_cases ψ ∈ Φ
+                                   · by_cases h: ψ ∈ Φ
                                      · have Hchi : Φ ⊢ χ :=
                                         by apply Proof.modusPonens (Proof.premise h)
                                             (Proof.premise (Set.mem_of_mem_of_subset Helem Hincl))
@@ -764,7 +770,7 @@ theorem completeness {ϕ : Formula} {Γ : Set Formula} : Γ ⊨ ϕ ↔ Nonempty 
   by
     apply Iff.intro
     · intros Hsem
-      by_cases (Nonempty (Γ ⊢ ϕ))
+      by_cases h : (Nonempty (Γ ⊢ ϕ))
       · assumption'
       · have Hcons : @consistentPair Γ {ϕ} :=
           by
@@ -774,17 +780,17 @@ theorem completeness {ϕ : Formula} {Γ : Set Formula} : Γ ⊨ ϕ ↔ Nonempty 
             rcases Homega with Hempty | Hsingl
             · rw [Hempty] at H
               simp at H
-              let Hexpthded := Proof.deductionTheorem_right_ind (Proof.exportation_ind H)
+              let Hexpthded := Proof.deductionTheorem_right_ind (Classical.choice (Proof.exportation_ind H))
               rw [Set.empty_union, Finset.toList_toFinset] at Hexpthded
-              let Hsubsetproof := Proof.subset_proof Hincl1 Hexpthded
-              let Hgammavp := @Proof.modusPonens Γ ⊥ ϕ Hsubsetproof Proof.exfalso
+              let Hsubsetproof := Proof.subset_proof Hincl1 (Classical.choice Hexpthded)
+              let Hgammavp := @Proof.modusPonens Γ ⊥ ϕ (Classical.choice Hsubsetproof) Proof.exfalso
               apply h
               apply Nonempty.intro Hgammavp
             · rw [Hsingl] at H
               simp at H
-              let H := Proof.deductionTheorem_right_ind (Proof.exportation_ind H)
+              let H := Proof.deductionTheorem_right_ind (Classical.choice (Proof.exportation_ind H))
               rw [Set.empty_union, Finset.toList_toFinset] at H
-              exact h (Nonempty.intro (Proof.subset_proof Hincl1 (Proof.modusPonens H Proof.orFalse)))
+              exact h (Proof.subset_proof Hincl1 (Proof.modusPonens (Classical.choice H) Proof.orFalse))
         let Hcompl := @consistent_incl_complete Γ {ϕ} Hcons
         rcases Hcompl with ⟨Φ, ⟨Ω, ⟨Hincl1, ⟨Hincl2, Hcompl⟩⟩⟩⟩
         let Hcomplete := Hcompl
@@ -803,7 +809,7 @@ theorem completeness {ϕ : Formula} {Γ : Set Formula} : Γ ⊨ ϕ ↔ Nonempty 
         let Hdisjthphi : setDisjTh := ⟨Φ, by assumption⟩
         let Hnotconseq : ¬val canonicalModel Hdisjthphi ϕ :=
           by
-            by_cases (val canonicalModel Hdisjthphi ϕ)
+            by_cases h : (val canonicalModel Hdisjthphi ϕ)
             · exfalso
               let Hin := (main_sem_lemma Hdisjthphi ϕ).1 h
               rcases Hvp with Hphi | Homega

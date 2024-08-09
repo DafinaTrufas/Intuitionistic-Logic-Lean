@@ -1,8 +1,8 @@
-import IL.HeytingAlgebraUtils
-import IL.Formula
-import IL.Semantics
-import IL.Soundness
-import IL.Completeness
+import Il.HeytingAlgebraUtils
+import Il.Formula
+import Il.Semantics
+import Il.Soundness
+import Il.Completeness
 
 variable {α : Type} [HeytingAlgebra α]
 
@@ -159,18 +159,20 @@ lemma antisymm'' {W : Type} {M : KripkeModel W} (A B : all_closed M) :
     intro HAB HBA
     apply Set.Subset.antisymm HAB HBA
 
+instance {W : Type} (M : KripkeModel W) : LE (all_closed M) :=
+  { le := λ X Y => X.1 ⊆ Y.1 }
+
 instance {W : Type} (M : KripkeModel W) : HeytingAlgebra (all_closed M) :=
   { sup := λ X Y => {val := X.1 ∪ Y.1, property := union_preserves_closed X Y}
-    le := λ X Y => X.1 ⊆ Y.1
     le_refl := λ _ => Set.Subset.rfl
     le_trans := λ _ _ _ => Set.Subset.trans
     le_antisymm := λ _ _ => by rw [Subtype.ext_iff]; apply Set.Subset.antisymm
-    le_sup_left := λ X Y => Set.subset_union_left X.1 Y.1
-    le_sup_right := λ X Y => Set.subset_union_right X.1 Y.1
+    le_sup_left := λ X Y => Set.subset_union_left
+    le_sup_right := λ X Y => Set.subset_union_right
     sup_le := λ _ _ _ => Set.union_subset
     inf := λ X Y => {val := X.1 ∩ Y.1, property := inter_preserves_closed X Y}
-    inf_le_left := λ X Y => Set.inter_subset_left X.1 Y.1
-    inf_le_right := λ X Y => Set.inter_subset_right X.1 Y.1
+    inf_le_left := λ X Y => Set.inter_subset_left
+    inf_le_right := λ X Y => Set.inter_subset_right
     le_inf := λ _ _ _ => Set.subset_inter
     top := {val := @Set.univ W, property := univ_closed}
     le_top := λ X => Set.subset_univ X.1
@@ -210,8 +212,7 @@ lemma h_interpretation {W : Type} {M : KripkeModel W} :
                                       rw [Set.subset_def]
                                       intro w Hwin
                                       have Hwin' : w ∈ (@h W M (ψ ⇒ χ)).1 :=
-                                        by exact Set.mem_of_mem_of_subset Hwin
-                                                  (Set.Subset.trans (Set.inter_subset_left A.1 (@h W M ψ).1) Hsubset)
+                                        by exact Set.mem_of_mem_of_subset Hwin (Set.Subset.trans Set.inter_subset_left Hsubset)
                                       have Hwin'' : w ∈ (@h W M ψ).1 :=
                                         by apply Set.inter_subset_right; assumption'
                                       apply Hwin'
@@ -386,7 +387,7 @@ lemma Vh_valuation (I : Var → α) :
                                      rcases Haux with ⟨P, ⟨Hprime, ⟨Hsubset, Hchinotin⟩⟩⟩
                                      have Hsubset' : F.1 ⊆ P :=
                                       by
-                                        apply Set.Subset.trans (Set.subset_union_left F.1 {AlgInterpretation I ψ})
+                                        apply Set.Subset.trans Set.subset_union_left
                                         apply Set.Subset.trans (X_subset_X_gen_filter (F.1 ∪ {AlgInterpretation I ψ})) Hsubset
                                      simp at Hval
                                      let Hval := Hval P Hprime Hsubset'
@@ -538,9 +539,11 @@ lemma to_quot_preserves_equiv (ϕ ψ ϕ' ψ' : Formula) : @equiv Γ ϕ ϕ' → @
 def to_quot (ϕ ψ : Quotient (@setoid_formula Γ)) : Quotient (@setoid_formula Γ):=
   Quotient.lift₂ (s₁ := @setoid_formula Γ) (s₂ := @setoid_formula Γ) Formula.to_quot to_quot_preserves_equiv ϕ ψ
 
+instance : LE (Quotient (@setoid_formula Γ)) :=
+  { le := le_quot }
+
 instance lt_heyting : HeytingAlgebra (Quotient (@setoid_formula Γ)) :=
   { sup := or_quot
-    le := le_quot
     le_refl := λ q => by
                         induction q using Quotient.ind
                         apply Nonempty.intro
